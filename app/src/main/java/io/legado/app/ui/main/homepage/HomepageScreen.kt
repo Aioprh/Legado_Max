@@ -119,6 +119,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
+ * 无限流（瀑布流/无限网格）每次揭示的书籍条数。窗口化渲染：仅渲染已揭示部分，
+ * 避免无限流加载过多后一次渲染全部书籍导致 UI 卡顿 / 内存放大。
+ */
+private const val MODULE_REVEAL_STEP = 20
+
+/**
  * 首页主屏幕 Composable
  *
  * 负责展示首页模块列表，包括：
@@ -816,19 +822,45 @@ private fun HomepageModuleItem(
                             onLongClick = { book, _ -> onBookLongClick(book) }
                         )
 
-                        HomepageModuleType.Grid, HomepageModuleType.InfiniteGrid -> Column(modifier = Modifier.fillMaxWidth()) {
-                            GridModule(
-                                books = state.books,
-                                onClick = { book, _ -> onBookClick(book) },
-                                onLongClick = { book, _ -> onBookLongClick(book) },
-                                maxRows = if (module.type == HomepageModuleType.InfiniteGrid) null else 2
-                            )
-                            // 无限网格显示加载更多
-                            if (module.type == HomepageModuleType.InfiniteGrid && state.hasMore) {
-                                LoadMoreFooter(
-                                    isLoading = state.isLoadingMore,
-                                    onClick = { viewModel.loadMoreModule(module.globalId) }
+                        HomepageModuleType.Grid, HomepageModuleType.InfiniteGrid -> {
+                            // 无限网格同样采用窗口化揭示渲染，避免一次渲染全部已载书籍
+                            var revealedCount by rememberSaveable(module.globalId) {
+                                mutableStateOf(MODULE_REVEAL_STEP)
+                            }
+                            LaunchedEffect(state.books.size) {
+                                if (revealedCount > state.books.size) revealedCount = state.books.size
+                            }
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                val displayBooks = if (module.type == HomepageModuleType.InfiniteGrid) {
+                                    state.books.take(revealedCount)
+                                } else state.books
+                                GridModule(
+                                    books = displayBooks,
+                                    onClick = { book, _ -> onBookClick(book) },
+                                    onLongClick = { book, _ -> onBookLongClick(book) },
+                                    maxRows = if (module.type == HomepageModuleType.InfiniteGrid) null else 2
                                 )
+                                // 无限网格：先揭示本地窗口，再触发网络加载更多
+                                if (module.type == HomepageModuleType.InfiniteGrid) {
+                                    val hasLocalReveal = revealedCount < state.books.size
+                                    if (hasLocalReveal) {
+                                        LoadMoreFooter(
+                                            isLoading = false,
+                                            onClick = {
+                                                revealedCount =
+                                                    (revealedCount + MODULE_REVEAL_STEP).coerceAtMost(state.books.size)
+                                            }
+                                        )
+                                    } else if (state.hasMore) {
+                                        LoadMoreFooter(
+                                            isLoading = state.isLoadingMore,
+                                            onClick = {
+                                                revealedCount += MODULE_REVEAL_STEP
+                                                viewModel.loadMoreModule(module.globalId)
+                                            }
+                                        )
+                                    }
+                                }
                             }
                         }
 
@@ -854,9 +886,17 @@ private fun HomepageModuleItem(
                         )
 
                         HomepageModuleType.Waterfall -> {
+                            // 瀑布流布局 - 使用 Column+Row 实现两列，避免 LazyGrid 嵌套需要固定高度
+                            // 窗口化揭示渲染：仅渲染「已揭示」的书籍，避免无限流加载过多后一次渲染全部导致卡顿
+                            var revealedCount by rememberSaveable(module.globalId) {
+                                mutableStateOf(MODULE_REVEAL_STEP)
+                            }
+                            // 书籍被刷新/重载变少时收敛窗口
+                            LaunchedEffect(state.books.size) {
+                                if (revealedCount > state.books.size) revealedCount = state.books.size
+                            }
                             Column(modifier = Modifier.fillMaxWidth()) {
-                                // 瀑布流布局 - 使用 Column+Row 实现两列，避免 LazyGrid 嵌套需要固定高度
-                                val displayBooks = state.books
+                                val displayBooks = state.books.take(revealedCount)
                                 val leftColumn = displayBooks.filterIndexed { index, _ -> index % 2 == 0 }
                                 val rightColumn = displayBooks.filterIndexed { index, _ -> index % 2 == 1 }
                                 Row(
@@ -888,11 +928,24 @@ private fun HomepageModuleItem(
                                         }
                                     }
                                 }
-                                // 加载更多
-                                if (state.hasMore) {
+                                // 本地还有已载入但未揭示的书籍：先揭示本地窗口
+                                val hasLocalReveal = revealedCount < state.books.size
+                                if (hasLocalReveal) {
+                                    LoadMoreFooter(
+                                        isLoading = false,
+                                        onClick = {
+                                            revealedCount =
+                                                (revealedCount + MODULE_REVEAL_STEP).coerceAtMost(state.books.size)
+                                        }
+                                    )
+                                } else if (state.hasMore) {
+                                    // 本地全部揭示后：再触发网络加载更多
                                     LoadMoreFooter(
                                         isLoading = state.isLoadingMore,
-                                        onClick = { viewModel.loadMoreModule(module.globalId) }
+                                        onClick = {
+                                            revealedCount += MODULE_REVEAL_STEP
+                                            viewModel.loadMoreModule(module.globalId)
+                                        }
                                     )
                                 }
                             }

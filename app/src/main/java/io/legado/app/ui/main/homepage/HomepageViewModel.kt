@@ -1,14 +1,11 @@
 package io.legado.app.ui.main.homepage
 
 import android.app.Application
-import android.text.Html
 import androidx.lifecycle.viewModelScope
 import io.legado.app.base.BaseViewModel
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.BookSourceExploreLite
-import io.legado.app.data.entities.RssArticle
-import io.legado.app.data.entities.RssSource
 import io.legado.app.data.entities.RssSourceLite
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.data.repository.HomepageModulesRepository
@@ -32,14 +29,11 @@ import io.legado.app.ui.main.explore.ExploreAdapter
 import com.script.rhino.runScriptWithContext
 import io.legado.app.utils.InfoMap
 import io.legado.app.model.CacheBook
-import io.legado.app.model.rss.Rss
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonArray
-import io.legado.app.utils.fromJsonObject
 import io.legado.app.utils.stackTraceStr
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -55,7 +49,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.security.MessageDigest
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * 首页 ViewModel
@@ -135,14 +128,22 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
 
     private val gateway: HomepageModulesGateway =
         HomepageModulesRepository(appDb.homepageModuleDao, appDb.homepageCustomSetDao)
-    private val exploreBooksUseCase = ExploreBooksUseCase()
     private val saveSearchBooksUseCase = SaveSearchBooksUseCase()
     private val addToBookshelfUseCase = AddToBookshelfUseCase()
 
     private val _effects = MutableSharedFlow<HomepageEffect>(extraBufferCapacity = 8)
     val effects = _effects.asSharedFlow()
 
-    private val loadJobs = ConcurrentHashMap<String, Job>()
+    /**
+     * 模块内容加载引擎：承载模块内容加载 / 行走Tab / 分页 / 刷新重载及专用内容状态。
+     * 刷新编排（isRefreshing 由本类持有）与展示层 Flow 仍留在 ViewModel 中。
+     */
+    private val moduleLoader = HomepageModuleLoader(
+        scope = viewModelScope,
+        gateway = gateway,
+        preloadModeProvider = { HomepageConfig.homepagePreload },
+        emitEffect = { _effects.tryEmit(it) },
+    )
 
 
     private val _isRefreshing = MutableStateFlow(false)
@@ -151,7 +152,6 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
     private val _refreshingModuleIds = MutableStateFlow<Set<String>>(emptySet())
     private val _isManageMode = MutableStateFlow(false)
     private val _configVersion = MutableStateFlow(0L)
-    private val _moduleContentStates = MutableStateFlow<Map<String, ModuleLoadState>>(emptyMap())
     private val _bookSourcesCache = MutableStateFlow<Map<String, BookSourceExploreLite>>(emptyMap())
     private val _rssSourceNames = MutableStateFlow<Map<String, String>>(emptyMap())
     private val _layoutConfigCache = MutableStateFlow<Map<String, Map<String, String>>>(emptyMap())
@@ -184,7 +184,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
 
     private val rawModulesFlow = combine(
         orderedModuleDefsFlow,
-        _moduleContentStates,
+        moduleLoader.contentStates,
         _bookSourcesCache,
         customSetsSync,
         // 将 _configVersion 纳入 combine，确保 hiddenSetUrls 变化时触发重算
@@ -456,7 +456,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                 )
                 
                 params.modules.forEach { ui ->
-                    if (ui.state is ModuleLoadState.Loading && loadJobs[ui.globalId]?.isActive != true) {
+                    if (ui.state is ModuleLoadState.Loading && !moduleLoader.isJobActive(ui.globalId)) {
                         // 刷新期间只加载目标集的模块，正常浏览时由预加载机制控制
                         val shouldLoad = if (_isRefreshing.value) {
                             ui.globalId in _refreshingModuleIds.value
@@ -465,7 +465,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                         }
                         if (shouldLoad) {
                             val module = gateway.getById(ui.globalId)
-                            if (module != null) loadModule(module)
+                            if (module != null) moduleLoader.loadModule(module)
                         }
                     }
                 }
@@ -474,7 +474,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
 
         // 监听模块状态变化，更新刷新状态
         viewModelScope.launch {
-            _moduleContentStates.collect { states ->
+            moduleLoader.contentStates.collect { states ->
                 // 如果正在刷新，检查是否目标模块都加载完成
                 if (_isRefreshing.value) {
                     val targetIds = _refreshingModuleIds.value
@@ -503,8 +503,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
 
     override fun onCleared() {
         super.onCleared()
-        loadJobs.values.forEach { it.cancel() }
-        loadJobs.clear()
+        moduleLoader.cancelAllJobs()
     }
 
     private suspend fun syncModulesFromSource(source: BookSource) {
@@ -555,371 +554,22 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         if (parsedIds.isNotEmpty()) gateway.deleteStale(source.bookSourceUrl, parsedIds.toList())
     }
 
-    // 订阅源文章 → SearchBook：去除 HTML 标签得到纯文本简介，复用现有书籍 UI
-    private fun rssArticlesToSearchBooks(
-        rssSource: RssSource,
-        articles: List<RssArticle>
-    ): List<SearchBook> {
-        return articles.map { article ->
-            val introText = article.description?.let {
-                Html.fromHtml(it, Html.FROM_HTML_MODE_LEGACY).toString().trim()
-            }
-            SearchBook(
-                bookUrl = article.link,
-                origin = rssSource.sourceUrl,
-                originName = rssSource.sourceName,
-                name = article.title,
-                coverUrl = article.image,
-                intro = introText,
-                author = rssSource.sourceName,
-                latestChapterTitle = article.pubDate
-            )
-        }
-    }
+    // ==================== 模块内容加载 ====================
+    // 模块内容加载 / 行走Tab / 分页 / 刷新重载逻辑及其专用状态已拆分至 HomepageModuleLoader，
+    // 此处仅保留对外暴露的转发入口与刷新编排。
 
-    private fun loadModule(module: ModuleItem) {
-        loadJobs[module.id]?.cancel()
-        val moduleType = HomepageModuleType.fromKey(module.type)
-        val moduleCategory = HomepageModuleSpec.category(moduleType)
-        if (moduleCategory == HomepageModuleCategory.SmartFilter) {
-            loadJobs[module.id] = viewModelScope.launch {
-                runCatching {
-                    val source = withContext(Dispatchers.IO) {
-                        appDb.bookSourceDao.getBookSource(module.sourceUrl)
-                    } ?: throw Exception("Source not found")
-                    withContext(Dispatchers.IO) { source.exploreKinds() }
-                }.onSuccess { kinds ->
-                    _moduleContentStates.update {
-                        it + (module.id to ModuleLoadState.SmartFilters(kinds))
-                    }
-                }.onFailure { error ->
-                    _moduleContentStates.update {
-                        it + (module.id to ModuleLoadState.Error(error.stackTraceStr))
-                    }
-                }
-            }.also { it.invokeOnCompletion { loadJobs.remove(module.id) } }
-            return
-        }
-        if (moduleCategory == HomepageModuleCategory.ButtonGroup) {
-            loadJobs[module.id] = viewModelScope.launch {
-                kotlin.runCatching {
-                    // 从 args 提取分类标题（兼容新旧两种格式）
-                    val selectedTitles = parseKindTitlesFromArgs(module.args)
-                    if (selectedTitles.isNullOrEmpty()) {
-                        emptyList<ExploreKind>()
-                    } else {
-                        // 检查是否为订阅源
-                        val rssSource = appDb.rssSourceDao.getByKey(module.sourceUrl)
-                        if (rssSource != null) {
-                            val allKinds = rssSource.sortUrls().map { (title, url) ->
-                                ExploreKind(title = title, url = url)
-                            }
-                            selectedTitles.mapNotNull { t -> allKinds.find { it.title == t } }
-                        } else {
-                            val source = appDb.bookSourceDao.getBookSource(module.sourceUrl)
-                                ?: throw Exception("Source not found")
-                            val allKinds = withContext(Dispatchers.IO) { source.exploreKinds() }
-                            selectedTitles.mapNotNull { t -> allKinds.find { it.title == t } }
-                        }
-                    }
-                }.onSuccess { kinds ->
-                    _moduleContentStates.update { it + (module.id to ModuleLoadState.Buttons(kinds)) }
-                }.onFailure { e ->
-                    _moduleContentStates.update { it + (module.id to ModuleLoadState.Error(e.stackTraceStr)) }
-                }
-            }.also { it.invokeOnCompletion { loadJobs.remove(module.id) } }
-            return
-        }
-        // 排行榜多分类模式：args 包含多个 {t:标题, u:URL} 对象
-        val isRanking = HomepageModuleSpec.isRankingTabs(moduleType)
-        val rankingCategoryPairs = if (isRanking) parseRankingCategories(module.args) else null
-
-        if (rankingCategoryPairs != null && rankingCategoryPairs.size >= 2) {
-            val rssSource = appDb.rssSourceDao.getByKey(module.sourceUrl)
-            val initialTabs = rankingCategoryPairs.map { (title, url) ->
-                RankingTabData(
-                    title = title,
-                    exploreUrl = url.ifBlank { null },
-                    page = 1,
-                    hasMore = true,
-                    isLoadingMore = false
-                )
-            }
-            _moduleContentStates.update { it + (module.id to ModuleLoadState.RankingTabs(initialTabs)) }
-            if (rankingCategoryPairs.isNotEmpty()) {
-                val (title, url) = rankingCategoryPairs[0]
-                loadRankingTab(module.id, module.sourceUrl, rssSource, 0, title, url, page = 1)
-            }
-            return
-        }
-        loadJobs[module.id] = viewModelScope.launch {
-            kotlin.runCatching {
-                // 检查是否为订阅源模块
-                val rssSource = appDb.rssSourceDao.getByKey(module.sourceUrl)
-                if (rssSource != null) {
-                    // 订阅源加载：获取文章列表
-                    val sortUrl = module.url ?: rssSource.sourceUrl
-                    val sortName = module.title.ifBlank { rssSource.sourceName }
-                    val (articles, _) = withContext(Dispatchers.IO) {
-                        Rss.getArticlesAwait(sortName, sortUrl, rssSource, page = 1)
-                    }
-                    // 转换为 SearchBook 以复用现有 UI
-                    val books = rssArticlesToSearchBooks(rssSource, articles)
-                    books to false
-                } else {
-                    // 书源加载（原有逻辑）
-                    val effectiveUrl = if (isRanking) {
-                        rankingCategoryPairs?.firstOrNull()?.second?.ifBlank { null }
-                            ?: module.url
-                    } else {
-                        module.url
-                    }
-                    val result = exploreBooksUseCase.execute(
-                        sourceUrl = module.sourceUrl,
-                        moduleUrl = effectiveUrl,
-                        args = module.args,
-                        page = 1
-                    )
-                    result.books to result.hasMore
-                }
-            }.onSuccess { (books, hasMore) ->
-                _moduleContentStates.update {
-                    it + (module.id to ModuleLoadState.Loaded(
-                        books = books.map { book ->
-                            HomepageBookItemUi(
-                                book = book,
-                                shelfState = BookshelfMatcher.getState(
-                                    book.name, book.author, book.bookUrl
-                                )
-                            )
-                        },
-                        hasMore = hasMore,
-                        page = 1,
-                        isLoadingMore = false
-                    ))
-                }
-            }.onFailure { e ->
-                _moduleContentStates.update { it + (module.id to ModuleLoadState.Error(e.stackTraceStr)) }
-            }
-        }.also { it.invokeOnCompletion { loadJobs.remove(module.id) } }
-    }
-
-    fun loadMoreModule(globalId: String) {
-        val currentState = _moduleContentStates.value[globalId] as? ModuleLoadState.Loaded ?: return
-        if (currentState.isLoadingMore || !currentState.hasMore) return
-        val nextPage = currentState.page + 1
-        _moduleContentStates.update { it + (globalId to currentState.copy(isLoadingMore = true)) }
-        viewModelScope.launch {
-            kotlin.runCatching {
-                val module = gateway.getById(globalId) ?: throw Exception("Module not found")
-                val isRanking = HomepageModuleSpec.isRankingTabs(HomepageModuleType.fromKey(module.type))
-                val effectiveUrl = if (isRanking) {
-                    parseRankingCategories(module.args)?.firstOrNull()?.second?.ifBlank { null }
-                        ?: module.url
-                } else {
-                    module.url
-                }
-                exploreBooksUseCase.execute(
-                    sourceUrl = module.sourceUrl,
-                    moduleUrl = effectiveUrl,
-                    args = module.args,
-                    page = nextPage
-                )
-            }.onSuccess { result ->
-                _moduleContentStates.update { states ->
-                    val lastState = states[globalId] as? ModuleLoadState.Loaded ?: return@update states
-                    val existingUrls = lastState.books.map { it.book.bookUrl }.toSet()
-                    val deduped = result.books.filter { it.bookUrl !in existingUrls }.map { book ->
-                        HomepageBookItemUi(
-                            book = book,
-                            shelfState = BookshelfMatcher.getState(
-                                book.name, book.author, book.bookUrl
-                            )
-                        )
-                    }
-                    val finalHasMore = if (deduped.isEmpty()) false else result.hasMore
-                    states + (globalId to ModuleLoadState.Loaded(
-                        books = lastState.books + deduped,
-                        hasMore = finalHasMore,
-                        isLoadingMore = false,
-                        page = nextPage
-                    ))
-                }
-            }.onFailure { e ->
-                _moduleContentStates.update { states ->
-                    val lastState = states[globalId] as? ModuleLoadState.Loaded ?: return@update states
-                    states + (globalId to lastState.copy(isLoadingMore = false))
-                }
-                _effects.tryEmit(HomepageEffect.ShowSnackbar("加载更多失败: ${e.message}"))
-            }
-        }
-    }
-
-    fun refreshButtonGroup(globalId: String) {
-        viewModelScope.launch {
-            val module = gateway.getById(globalId) ?: return@launch
-            loadModule(module)
-        }
-    }
+    fun loadMoreModule(globalId: String) = moduleLoader.loadMoreModule(globalId)
 
     fun onKindUrlClick(sourceUrl: String, url: String, title: String) =
         _effects.tryEmit(HomepageEffect.NavigateToExploreShow(title, sourceUrl, url))
 
-    /**
-     * 切换排行榜 Tab 时按需加载当前选中分类的内容（懒加载优化）
-     *
-     * 仅加载选中的分类 Tab。如果预加载功能开启（preloadMode == 1），
-     * 还会预先加载相邻分类 Tab 的内容以提升切换体验。
-     */
-    fun selectRankingTab(globalId: String, index: Int) {
-        // 更新 selectedIndex
-        val prevState = _moduleContentStates.value[globalId] as? ModuleLoadState.RankingTabs ?: return
-        _moduleContentStates.update { states ->
-            val current = states[globalId] as? ModuleLoadState.RankingTabs ?: return@update states
-            states + (globalId to current.copy(selectedIndex = index))
-        }
-        // 按需加载：只加载当前选中的 Tab
-        val tab = prevState.tabs.getOrNull(index) ?: return
+    fun selectRankingTab(globalId: String, index: Int) =
+        moduleLoader.selectRankingTab(globalId, index)
 
-        viewModelScope.launch {
-            val module = gateway.getById(globalId) ?: return@launch
-            val rssSource = appDb.rssSourceDao.getByKey(module.sourceUrl)
-            // 重新获取最新状态（可能已被 refresh 清空）
-            val state = _moduleContentStates.value[globalId] as? ModuleLoadState.RankingTabs ?: return@launch
-            val currentTab = state.tabs.getOrNull(index) ?: return@launch
-            // 加载当前 Tab（如果尚未加载）
-            if (currentTab.books == null && currentTab.errorMessage == null) {
-                val tabJobKey = "${globalId}_tab_$index"
-                if (loadJobs[tabJobKey]?.isActive != true) {
-                    loadRankingTab(globalId, module.sourceUrl, rssSource, index, currentTab.title, currentTab.exploreUrl ?: "", page = 1)
-                }
-            }
-            // 预加载相邻 Tab（预加载开启时）
-            if (preloadMode.value == 1) {
-                listOf(index - 1, index + 1).forEach { adjacentIndex ->
-                    val adjacentTab = state.tabs.getOrNull(adjacentIndex) ?: return@forEach
-                    if (adjacentTab.books == null && adjacentTab.errorMessage == null) {
-                        val adjJobKey = "${globalId}_tab_$adjacentIndex"
-                        if (loadJobs[adjJobKey]?.isActive != true) {
-                            loadRankingTab(globalId, module.sourceUrl, rssSource, adjacentIndex, adjacentTab.title, adjacentTab.exploreUrl ?: "", page = 1)
-                        }
-                    }
-                }
-            }
-        }
-    }
+    fun loadMoreRankingTab(globalId: String, tabIndex: Int) =
+        moduleLoader.loadMoreRankingTab(globalId, tabIndex)
 
-    // ==================== 多分类 Tab 加载 ====================
-    private fun loadRankingTab(
-        moduleId: String,
-        sourceUrl: String,
-        rssSource: RssSource?,
-        index: Int,
-        title: String,
-        url: String,
-        page: Int = 1
-    ) {
-        val jobKey = "${moduleId}_tab_$index"
-        // 取消之前的加载任务
-        loadJobs[jobKey]?.cancel()
-        loadJobs[jobKey] = viewModelScope.launch {
-            kotlin.runCatching {
-                val books = if (rssSource != null) {
-                    val (articles, _) = withContext(Dispatchers.IO) {
-                        Rss.getArticlesAwait(title.ifBlank { rssSource.sourceName }, url, rssSource, page = page)
-                    }
-                    rssArticlesToSearchBooks(rssSource, articles)
-                } else {
-                    val result = exploreBooksUseCase.execute(
-                        sourceUrl = sourceUrl,
-                        moduleUrl = url.ifBlank { null },
-                        args = null,
-                        page = page
-                    )
-                    result.books
-                }
-                books.map { book ->
-                    HomepageBookItemUi(
-                        book = book,
-                        shelfState = BookshelfMatcher.getState(
-                            book.name, book.author, book.bookUrl
-                        )
-                    )
-                }
-            }.onSuccess { bookItems ->
-                _moduleContentStates.update { states ->
-                    val current = states[moduleId] as? ModuleLoadState.RankingTabs ?: return@update states
-                    val updatedTabs = current.tabs.toMutableList()
-                    val oldTab = updatedTabs[index]
-                    val existingUrls = oldTab.books?.map { it.book.bookUrl }?.toSet() ?: emptySet()
-                    val deduped = bookItems.filter { it.book.bookUrl !in existingUrls }
-                    val newBooks = if (oldTab.books != null) oldTab.books + deduped else bookItems
-                    val hasMore = if (bookItems.isEmpty()) false else true
-                    updatedTabs[index] = oldTab.copy(
-                        books = newBooks,
-                        page = page,
-                        hasMore = hasMore,
-                        isLoadingMore = false,
-                        errorMessage = null
-                    )
-                    states + (moduleId to current.copy(tabs = updatedTabs))
-                }
-            }.onFailure { e ->
-                _moduleContentStates.update { states ->
-                    val current = states[moduleId] as? ModuleLoadState.RankingTabs ?: return@update states
-                    val updatedTabs = current.tabs.toMutableList()
-                    updatedTabs[index] = updatedTabs[index].copy(
-                        errorMessage = e.stackTraceStr,
-                        isLoadingMore = false
-                    )
-                    states + (moduleId to current.copy(tabs = updatedTabs))
-                }
-            }
-        }.also { it.invokeOnCompletion { loadJobs.remove(jobKey) } }
-    }
-
-    fun loadMoreRankingTab(globalId: String, tabIndex: Int) {
-        val state = _moduleContentStates.value[globalId] as? ModuleLoadState.RankingTabs ?: return
-        val tab = state.tabs.getOrNull(tabIndex) ?: return
-
-        if (tab.isLoadingMore) return
-
-        val nextPage = tab.page + 1
-
-        // 重试逻辑：即使 hasMore=false，如果已有书籍且不是空列表，允许重试
-        val effectiveHasMore = if (!tab.hasMore && tab.books != null && tab.books.isNotEmpty()) {
-            true
-        } else {
-            tab.hasMore
-        }
-        if (!effectiveHasMore) return
-
-        // 更新状态
-        _moduleContentStates.update { states ->
-            val current = states[globalId] as? ModuleLoadState.RankingTabs ?: return@update states
-            val updatedTabs = current.tabs.toMutableList()
-            updatedTabs[tabIndex] = updatedTabs[tabIndex].copy(
-                isLoadingMore = true,
-                hasMore = true,
-                errorMessage = null
-            )
-            states + (globalId to current.copy(tabs = updatedTabs))
-        }
-
-        viewModelScope.launch {
-            val module = gateway.getById(globalId) ?: return@launch
-            val rssSource = appDb.rssSourceDao.getByKey(module.sourceUrl)
-            loadRankingTab(
-                moduleId = globalId,
-                sourceUrl = module.sourceUrl,
-                rssSource = rssSource,
-                index = tabIndex,
-                title = tab.title,
-                url = tab.exploreUrl ?: "",
-                page = nextPage
-            )
-        }
-    }
+    fun retryModule(globalId: String) = moduleLoader.retryModule(globalId)
 
     /**
      * 刷新首页模块内容（重新加载已存在的模块数据，不自动从书源同步新模块）
@@ -929,28 +579,21 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         viewModelScope.launch {
             _isRefreshing.value = true
             _refreshingSetName.value = setName
-            loadJobs.values.forEach { it.cancel() }
-            loadJobs.clear()
+            moduleLoader.cancelAllJobs()
             // 仅重新加载已有模块的内容，不从书源自动同步
             if (setName != null) {
                 // 只刷新指定书源集的模块
                 val setModules = uiState.value.modules.filter { it.setName == setName }
                 val setModuleIds = setModules.map { it.globalId }.toSet()
                 _refreshingModuleIds.value = setModuleIds
-                _moduleContentStates.update { states ->
-                    states.filterKeys { it !in setModuleIds }
-                }
+                moduleLoader.clearContent(setModuleIds)
             } else {
                 // 刷新所有模块
                 _refreshingModuleIds.value = uiState.value.modules.map { it.globalId }.toSet()
-                _moduleContentStates.value = emptyMap()
+                moduleLoader.clearAllContent()
             }
             // isRefreshing 由 auto-load collector 在所有模块加载完成后自动置为 false
         }
-    }
-
-    fun retryModule(globalId: String) {
-        _moduleContentStates.update { it + (globalId to ModuleLoadState.Loading) }
     }
 
     /**
@@ -1266,7 +909,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
             }
 
             runCatching { source.clearExploreKindsCache() }
-            loadModule(module)
+            moduleLoader.loadModule(module)
             notifyConfigChanged()
         }
     }
@@ -1596,46 +1239,6 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         }
     }
 
-    /**
-     * 解析排行榜模块 args 中的多分类数据
-     * @return 解析成功返回 (标题, URL) 列表，至少 2 个元素才认为是多分类模式；否则返回 null
-     */
-    private fun parseRankingCategories(args: String?): List<Pair<String, String>>? {
-        if (args.isNullOrBlank()) return null
-        return try {
-            val list = GSON.fromJsonArray<Map<String, String>>(args).getOrNull() ?: return null
-            val result = list.mapNotNull { map ->
-                val t = map["t"] ?: return@mapNotNull null
-                val u = map["u"] ?: ""
-                Pair(t, u)
-            }
-            if (result.isNotEmpty()) result else null
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    /**
-     * 兼容新旧两种 args 格式提取分类标题
-     * 新: [{"t":"title1","u":"url1"},...]  旧: ["title1","title2"]
-     */
-    private fun parseKindTitlesFromArgs(args: String?): List<String>? {
-        if (args.isNullOrBlank()) return null
-        // 先尝试新格式 [{t, u}]
-        try {
-            val list = GSON.fromJsonArray<Map<String, String>>(args).getOrNull()
-            if (list != null && list.isNotEmpty()) {
-                return list.mapNotNull { it["t"] }
-            }
-        } catch (_: Exception) { }
-        // 回退旧格式 ["title1","title2"]
-        return try {
-            GSON.fromJsonArray<String>(args).getOrNull()
-        } catch (_: Exception) {
-            null
-        }
-    }
-
     fun updateModule(globalId: String, def: ModuleDef) {
         viewModelScope.launch {
             val existing = gateway.getById(globalId) ?: return@launch
@@ -1687,22 +1290,18 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                     val deletedIds = allModulesCache.value
                         .filter { it.sourceUrl == module.sourceUrl && it.moduleKey == module.moduleKey }
                         .map { it.id }
-                    _moduleContentStates.update { states ->
-                        var result = states
-                        deletedIds.forEach { result = result - it }
-                        result
-                    }
-                    deletedIds.forEach { loadJobs.remove(it)?.cancel() }
+                    moduleLoader.clearContent(deletedIds)
+                    deletedIds.forEach { moduleLoader.cancelJob(it) }
                 } else {
                     // 从自定义集删除：仅删除当前模块
                     gateway.delete(globalId)
-                    _moduleContentStates.update { it - globalId }
-                    loadJobs.remove(globalId)?.cancel()
+                    moduleLoader.clearContent(globalId)
+                    moduleLoader.cancelJob(globalId)
                 }
             } else {
                 gateway.delete(globalId)
-                _moduleContentStates.update { it - globalId }
-                loadJobs.remove(globalId)?.cancel()
+                moduleLoader.clearContent(globalId)
+                moduleLoader.cancelJob(globalId)
             }
             notifyConfigChanged()
         }
@@ -1769,8 +1368,8 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                 // 删除所有来自该书源的模块（包括书源集和自定义集中的副本）
                 moduleIds.forEach { mid -> gateway.delete(mid) }
                 moduleIds.forEach { mid ->
-                    _moduleContentStates.update { it - mid }
-                    loadJobs.remove(mid)?.cancel()
+                    moduleLoader.clearContent(mid)
+                    moduleLoader.cancelJob(mid)
                 }
             } else {
                 // 自定义集：只删除属于该集的模块
@@ -1779,8 +1378,8 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                     .map { it.id }
                 gateway.deleteCustomSet(id)
                 moduleIds.forEach { mid ->
-                    _moduleContentStates.update { it - mid }
-                    loadJobs.remove(mid)?.cancel()
+                    moduleLoader.clearContent(mid)
+                    moduleLoader.cancelJob(mid)
                 }
             }
             notifyConfigChanged()
