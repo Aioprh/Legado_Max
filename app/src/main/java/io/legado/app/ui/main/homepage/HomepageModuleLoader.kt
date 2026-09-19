@@ -184,30 +184,32 @@ class HomepageModuleLoader(
         }
         if (moduleCategory == HomepageModuleCategory.ButtonGroup) {
             loadJobs[module.id] = scope.launch {
-                kotlin.runCatching {
-                    // 从 args 提取分类标题（兼容新旧两种格式）
+                try {
                     val selectedTitles = parseKindTitlesFromArgs(module.args)
-                    if (selectedTitles.isNullOrEmpty()) {
-                        emptyList<ExploreKind>()
+                    val kinds = if (selectedTitles.isNullOrEmpty()) {
+                        emptyList()
                     } else {
-                        // 检查是否为订阅源
-                        val rssSource = appDb.rssSourceDao.getByKey(module.sourceUrl)
+                        val rssSource = withContext(Dispatchers.IO) {
+                            appDb.rssSourceDao.getByKey(module.sourceUrl)
+                        }
                         if (rssSource != null) {
                             val allKinds = rssSource.sortUrls().map { (title, url) ->
                                 ExploreKind(title = title, url = url)
                             }
                             selectedTitles.mapNotNull { t -> allKinds.find { it.title == t } }
                         } else {
-                            val source = appDb.bookSourceDao.getBookSource(module.sourceUrl)
-                                ?: throw Exception("Source not found")
+                            val source = withContext(Dispatchers.IO) {
+                                appDb.bookSourceDao.getBookSource(module.sourceUrl)
+                            } ?: throw Exception("Source not found")
                             val allKinds = withContext(Dispatchers.IO) { source.exploreKinds() }
                             selectedTitles.mapNotNull { t -> allKinds.find { it.title == t } }
                         }
                     }
-                }.onSuccess { kinds ->
                     _contentStates.update { it + (module.id to ModuleLoadState.Buttons(kinds)) }
-                }.onFailure { e ->
-                    _contentStates.update { it + (module.id to ModuleLoadState.Error(e.stackTraceStr)) }
+                } catch (e: Exception) {
+                    _contentStates.update {
+                        it + (module.id to ModuleLoadState.Error(e.stackTraceStr))
+                    }
                 }
             }.also { it.invokeOnCompletion { loadJobs.remove(module.id) } }
             return
