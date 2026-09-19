@@ -1229,7 +1229,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                 val safeKey = kind.title.trim().ifBlank { "分类" + index }
                     .replace(Regex("[^\\p{L}\\p{N}_-]"), "_")
                 result += ModuleDef(
-                    key = "smart_$index_$safeKey",
+                    key = "smart_${index}_$safeKey",
                     type = HomepageModuleType.Grid.key,
                     title = kind.title,
                     url = kind.url ?: "",
