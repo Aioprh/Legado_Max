@@ -4,6 +4,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -40,14 +41,20 @@ fun GridModule(
     onClick: (SearchBook, String?) -> Unit,
     onLongClick: ((SearchBook, String?) -> Unit)? = null,
     modifier: Modifier = Modifier,
-    columns: Int = 3,
+    columns: Int = 0,
     maxRows: Int? = null,
 ) {
     if (books.isEmpty()) return
-    var rows = books.chunked(columns)
-    if (maxRows != null) rows = rows.take(maxRows)
-    Column(
-        modifier = modifier.fillMaxWidth(),
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val resolvedColumns = if (columns > 0) {
+            columns
+        } else {
+            (maxWidth / 112.dp).toInt().coerceIn(2, 5)
+        }
+        var rows = books.chunked(resolvedColumns)
+        if (maxRows != null) rows = rows.take(maxRows)
+        Column(
+            modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         for (row in rows) {
@@ -135,7 +142,7 @@ fun GridModule(
                         }
                     }
                 }
-                repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
+                repeat(resolvedColumns - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }
