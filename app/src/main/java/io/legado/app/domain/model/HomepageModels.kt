@@ -69,7 +69,6 @@ enum class HomepageModuleType(val key: String, @StringRes val titleRes: Int) {
     ButtonGroup("buttonGroup", R.string.module_type_button_group),
     SmartFilter("smartFilter", R.string.module_type_smart_filter),
     Waterfall("waterfall", R.string.module_type_waterfall),
-    DiscoverHub("discoverHub", R.string.module_type_discover_hub),
     SearchBar("searchBar", R.string.module_type_search_bar),
     Unknown("", R.string.unknown_type);
 
@@ -89,8 +88,6 @@ enum class HomepageModuleCategory {
     ButtonGroup,
     /** 智能筛选（SmartFilter） */
     SmartFilter,
-    /** 书源聚合总览（DiscoverHub）：聚合所有启用发现的书源及其分类 */
-    SourceDiscovery,
     /** 独立组件（SearchBar）：无内容加载，仅常驻渲染 */
     Standalone,
 }
@@ -104,7 +101,6 @@ object HomepageModuleSpec {
     fun category(type: HomepageModuleType): HomepageModuleCategory = when (type) {
         HomepageModuleType.SmartFilter -> HomepageModuleCategory.SmartFilter
         HomepageModuleType.ButtonGroup -> HomepageModuleCategory.ButtonGroup
-        HomepageModuleType.DiscoverHub -> HomepageModuleCategory.SourceDiscovery
         HomepageModuleType.SearchBar -> HomepageModuleCategory.Standalone
         HomepageModuleType.Ranking,
         HomepageModuleType.GridRanking -> HomepageModuleCategory.RankingTabs
@@ -159,11 +155,6 @@ object HomepageLayoutOptions {
         )
         HomepageModuleType.Waterfall -> listOf(
             Option("columns", 2, R.string.homepage_config_columns)
-        )
-        HomepageModuleType.DiscoverHub -> listOf(
-            Option("columns", 2, R.string.homepage_config_columns),
-            Option("showDesc", 1, R.string.homepage_config_show_desc),
-            Option("showTime", 0, R.string.homepage_config_show_time)
         )
         HomepageModuleType.SearchBar -> emptyList()
         else -> emptyList()
