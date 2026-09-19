@@ -379,7 +379,7 @@ class HomepageModuleLoader(
                             )
                         )
                     }
-                    val finalHasMore = if (deduped.isEmpty()) false else result.hasMore
+                    val finalHasMore = if (aggregate.queries.size >= 2) deduped.isNotEmpty() else if (deduped.isEmpty()) false else result.hasMore
                     val updatedState = ModuleLoadState.Loaded(
                         books = lastState.books + deduped,
                         hasMore = finalHasMore,
