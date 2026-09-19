@@ -10,6 +10,9 @@
  */
 package io.legado.app.ui.main.homepage
 
+import io.legado.app.utils.GSON
+import java.util.Calendar
+
 import io.legado.app.constant.PreferKey
 import io.legado.app.utils.defaultSharedPreferences
 import splitties.init.appCtx
@@ -53,4 +56,27 @@ object HomepageConfig {
     var homepagePreload: Int
         get() = appCtx.defaultSharedPreferences.getInt(PreferKey.homepagePreload, 0)
         set(value) = appCtx.defaultSharedPreferences.edit().putInt(PreferKey.homepagePreload, value).apply()
+    /**
+     * 判断模块是否满足可选显示条件。
+     * layoutConfig.showIf 示例：
+     * {"showIf":{"minHour":8,"maxHour":23,"days":[1,2,3,4,5,6,7],"portraitOnly":true}}
+     */
+    fun isModuleVisible(layoutConfig: String?): Boolean {
+        if (layoutConfig.isNullOrBlank()) return true
+        return runCatching {
+            @Suppress("UNCHECKED_CAST")
+            val root = GSON.fromJson(layoutConfig, Map::class.java) as? Map<*, *> ?: return@runCatching true
+            val condition = root["showIf"] as? Map<*, *> ?: return@runCatching true
+            val calendar = Calendar.getInstance()
+            val hour = calendar.get(Calendar.HOUR_OF_DAY)
+            val day = calendar.get(Calendar.DAY_OF_WEEK)
+            val minHour = condition["minHour"]?.toString()?.toIntOrNull()
+            val maxHour = condition["maxHour"]?.toString()?.toIntOrNull()
+            if (minHour != null && hour < minHour) return@runCatching false
+            if (maxHour != null && hour > maxHour) return@runCatching false
+            val days = (condition["days"] as? List<*>)?.mapNotNull { it.toString().toIntOrNull() }
+            if (!days.isNullOrEmpty() && day !in days) return@runCatching false
+            true
+        }.getOrDefault(true)
+    }
 }
