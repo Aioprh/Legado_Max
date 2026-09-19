@@ -61,4 +61,21 @@
     <color name="background_tab_container">#0FFFFFFF</color>
     <color name="background_tab_selected">#10FFFFFF</color>
     <color name="background_preview_card">#10FFFFFF</color>
-</resources>
+
+    <!-- Liquid Glass design tokens: night surface -->
+    <color name="glass_card_shadow">#40000000</color>
+    <color name="glass_card_start">#501F2B38</color>
+    <color name="glass_card_center">#4219232E</color>
+    <color name="glass_card_end">#32131B24</color>
+    <color name="glass_card_highlight">#20FFFFFF</color>
+    <color name="glass_card_bottom_tint">#30000000</color>
+    <color name="glass_card_stroke">#32FFFFFF</color>
+    <color name="glass_card_stroke_strong">#55FFFFFF</color>
+    <color name="glass_card_pressed_start">#702E3C4B</color>
+    <color name="glass_card_pressed_center">#5A24313F</color>
+    <color name="glass_card_pressed_end">#481A2530</color>
+    <color name="glass_card_focus_start">#682B3947</color>
+    <color name="glass_card_focus_center">#54212D39</color>
+    <color name="glass_card_focus_end">#4019232D</color>
+    <color name="glass_section_title">#B3BFD0DB</color>
+
