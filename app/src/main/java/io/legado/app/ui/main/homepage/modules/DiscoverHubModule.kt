@@ -145,7 +145,7 @@ private fun SourceFilterBar(
             title = "全部",
             selected = selectedSourceUrl == null,
             onClick = {
-                if (selectedSourceUrl != null) onSelect(selectedSourceUrl)
+                selectedSourceUrl?.let(onSelect)
             }
         )
         sources.forEach { source ->
