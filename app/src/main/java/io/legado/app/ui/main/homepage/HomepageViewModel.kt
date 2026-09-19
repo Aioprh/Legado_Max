@@ -209,6 +209,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                 val exploreUrl = module.url ?: source?.exploreUrl
                 val configMap = configCache[module.id] ?: emptyMap()
 
+                if (!HomepageConfig.isModuleVisible(module.layoutConfig)) return@mapNotNull null
                 HomepageModuleUi(
                     sourceUrl = module.sourceUrl,
                     setName = setName,
