@@ -907,6 +907,7 @@ private fun HomepageModuleItem(
                 is ModuleLoadState.SmartFilters -> {
                     SmartFilterModule(
                         kinds = state.kinds,
+                        sourceUrl = module.sourceUrl,
                         modifier = Modifier.fillMaxWidth(),
                         onSelect = { kind, value ->
                             viewModel.onSmartFilterChanged(module.globalId, kind, value)
