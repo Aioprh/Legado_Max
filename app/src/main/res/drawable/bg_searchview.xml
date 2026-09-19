@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android" >
-    <!-- 角度 -->
-    <corners android:radius="35dp"/>
-    <!-- 填充色 -->
-    <solid android:color="@color/transparent10" />
-    <!-- 描边 设置线宽及颜色 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <corners android:radius="22dp" />
+    <gradient
+        android:angle="0"
+        android:startColor="#BDFBFCFE"
+        android:endColor="#66DCE8EE" />
     <stroke
-        android:color="@color/transparent10"
-        android:width="0.5dp" />
+        android:width="1dp"
+        android:color="#52FFFFFF" />
 </shape>
