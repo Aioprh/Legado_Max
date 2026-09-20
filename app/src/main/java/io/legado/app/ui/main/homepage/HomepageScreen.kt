@@ -553,42 +553,42 @@ private fun SourceTabLayout(
                 android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
                 android.content.res.Configuration.UI_MODE_NIGHT_YES
             val accent = pageAccentColor()
-            val tabBarShape = RoundedCornerShape(20.dp)
+            val tabBarShape = RoundedCornerShape(22.dp)
 
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(44.dp)
+                    .height(46.dp)
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 shape = tabBarShape,
                 color = if (isNight) {
-                    Color(0x661B1B1D)
+                    Color(0x551B1B1D)
                 } else {
-                    Color.White.copy(alpha = 0.72f)
+                    Color.White.copy(alpha = 0.62f)
                 },
                 border = BorderStroke(
-                    width = 1.dp,
+                    width = 0.8.dp,
                     color = if (isNight) {
-                        Color.White.copy(alpha = 0.20f)
+                        Color.White.copy(alpha = 0.18f)
                     } else {
-                        Color.White.copy(alpha = 0.60f)
+                        Color.White.copy(alpha = 0.72f)
                     }
                 ),
-                shadowElevation = 3.dp
+                shadowElevation = 4.dp
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(tabScrollState)
-                        .padding(horizontal = 4.dp, vertical = 3.dp),
+                        .padding(horizontal = 5.dp, vertical = 5.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     selectedSets.forEachIndexed { index, set ->
                         val isSelected = safeTabIndex == index
                         Surface(
                             modifier = Modifier
-                                .height(36.dp)
+                                .height(34.dp)
                                 .combinedClickable(
                                     onClick = {
                                         selectedTabIndex = index
@@ -600,22 +600,22 @@ private fun SourceTabLayout(
                                         onRefresh(set.sourceName)
                                     }
                                 ),
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(17.dp),
                             color = if (isSelected) {
-                                accent.copy(alpha = 0.82f)
+                                accent.copy(alpha = if (isNight) 0.72f else 0.78f)
                             } else if (isNight) {
-                                Color.White.copy(alpha = 0.08f)
+                                Color.White.copy(alpha = 0.07f)
                             } else {
-                                Color.White.copy(alpha = 0.44f)
+                                Color.White.copy(alpha = 0.34f)
                             },
                             border = BorderStroke(
                                 width = 1.dp,
                                 color = if (isSelected) {
-                                    Color.White.copy(alpha = 0.60f)
+                                    Color.White.copy(alpha = 0.58f)
                                 } else if (isNight) {
                                     Color.White.copy(alpha = 0.20f)
                                 } else {
-                                    Color.White.copy(alpha = 0.55f)
+                                    Color.White.copy(alpha = 0.48f)
                                 }
                             ),
                             contentColor = if (isSelected) {
@@ -627,7 +627,7 @@ private fun SourceTabLayout(
                             Box(
                                 modifier = Modifier
                                     .fillMaxHeight()
-                                    .padding(horizontal = 14.dp),
+                                    .padding(horizontal = 13.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
