@@ -185,6 +185,8 @@ fun HomepageModuleManageSheet(
         skipPartiallyExpanded = true,
         // 管理页内部使用 LazyColumn，自身负责滚动；禁止外层滚动避免到底后与 BottomSheet 争抢手势导致上下抖动。
         scrollable = false,
+        // 模块管理页面由内部 LazyColumn 接管滚动，禁止 BottomSheet 本身响应拖拽，避免列表到底后剩余手势让整张弹窗上下位移。
+        sheetGesturesEnabled = false,
         startAction = if (canGoBack) {
             {
                 IconButton(onClick = { handleBack() }) {
