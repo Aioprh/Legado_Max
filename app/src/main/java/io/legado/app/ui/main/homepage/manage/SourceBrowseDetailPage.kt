@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -65,6 +64,7 @@ import io.legado.app.R
 import io.legado.app.domain.model.HomepageModuleType
 import io.legado.app.domain.model.ModuleDef
 import io.legado.app.ui.main.homepage.HomepageManageActions
+import io.legado.app.ui.main.homepage.manage.BottomSheetLazyColumn
 import io.legado.app.ui.main.homepage.HomepageModuleManageUi
 import io.legado.app.ui.main.homepage.HomepageViewModel
 import io.legado.app.ui.theme.pageSecondaryTextColor
@@ -192,7 +192,7 @@ private fun JoinedModulesTab(
     }
 
     Box(modifier = Modifier.fillMaxWidth()) {
-        LazyColumn(
+        BottomSheetLazyColumn(
             state = listState,
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
