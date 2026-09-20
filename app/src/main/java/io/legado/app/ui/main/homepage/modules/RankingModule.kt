@@ -78,6 +78,17 @@ fun RankingModule(
                     onClick = onClick,
                     onLongClick = onLongClick,
                 )
+                if (index < displayBooks.lastIndex) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 54.dp, end = 10.dp)
+                            .size(height = 0.5.dp, width = 0.dp)
+                            .background(
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
+                            )
+                    )
+                }
             }
             if (books.size > INITIAL_COUNT) {
                 Row(
@@ -129,15 +140,15 @@ private fun RankingItem(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = "$rank",
+            text = rank.toString().padStart(2, '0'),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Black,
             fontStyle = if (rank <= 3) FontStyle.Italic else FontStyle.Normal,
             color = if (rank <= 3) pageAccentColor() else MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             modifier = Modifier
-                .width(42.dp)
-                .padding(start = 2.dp, end = 10.dp),
+                .width(44.dp)
+                .padding(start = 2.dp, end = 8.dp),
         )
         // 封面（带书架状态图标）
         Box {
@@ -183,7 +194,7 @@ private fun RankingItem(
         }
         Column(
             modifier = Modifier
-                .padding(start = 8.dp)
+                .padding(start = 10.dp)
                 .weight(1f)
         ) {
             // 书名区域
