@@ -1,6 +1,7 @@
 package io.legado.app.ui.main.homepage.manage
 
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
@@ -32,6 +33,7 @@ import androidx.compose.ui.unit.Velocity
 fun BottomSheetLazyColumn(
     state: LazyListState,
     modifier: Modifier = Modifier,
+    verticalArrangement: Arrangement.Vertical = Arrangement.Top,
     content: LazyListScope.() -> Unit,
 ) {
     val boundaryConnection = remember(state) {
@@ -82,6 +84,7 @@ fun BottomSheetLazyColumn(
     LazyColumn(
         state = state,
         modifier = modifier.nestedScroll(boundaryConnection),
+        verticalArrangement = verticalArrangement,
         overscrollEffect = null,
         content = content,
     )
