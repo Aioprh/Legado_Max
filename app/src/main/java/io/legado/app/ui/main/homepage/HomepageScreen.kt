@@ -6,7 +6,9 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,7 +42,6 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ViewModule
@@ -146,8 +147,6 @@ fun HomepageScreen(
     var showLayoutMenu by remember { mutableStateOf(false) }
     val layoutMode by viewModel.layoutMode.collectAsStateWithLifecycle()
     val preloadMode by viewModel.preloadMode.collectAsStateWithLifecycle()
-    // 分源Tab模式下当前选中的集名称，用于刷新按钮定位刷新范围
-    var currentSetName by remember { mutableStateOf<String?>(null) }
 
     // 书籍底部弹窗状态
     var showBookSheet by remember { mutableStateOf(false) }
@@ -223,20 +222,6 @@ fun HomepageScreen(
                             .weight(1f)
                             .padding(start = 16.dp)
                     )
-                    // 刷新按钮：混合列表模式刷新全部，分源Tab模式仅刷新当前集
-                    IconButton(onClick = {
-                        if (layoutMode == 1) {
-                            viewModel.onRefresh(currentSetName)
-                        } else {
-                            viewModel.onRefresh()
-                        }
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = stringResource(R.string.refresh),
-                            tint = topBarColors.contentColor
-                        )
-                    }
                     // 搜索按钮
                     IconButton(onClick = {
                         context.startActivity<SearchActivity>()
@@ -383,7 +368,6 @@ fun HomepageScreen(
                 context = context,
                 isRefreshing = uiState.isRefreshing,
                 onRefresh = viewModel::onRefresh,
-                onCurrentSetChanged = { name -> currentSetName = name },
                 onBookLongClick = { book ->
                     selectedBook = book
                     selectedBookShelfState = viewModel.getCurrentBookShelfState(book)
@@ -510,7 +494,7 @@ fun HomepageScreen(
  * 使用管理状态中的集列表作为Tab来源，确保Tab顺序与集排序同步更新。
  * Tab视觉与书架智能标签统一为透明液态玻璃胶囊样式，同时保留横向滑动与Pager联动。
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 private fun SourceTabLayout(
     modules: List<HomepageModuleUi>,
@@ -521,7 +505,6 @@ private fun SourceTabLayout(
     context: android.content.Context,
     isRefreshing: Boolean,
     onRefresh: (String?) -> Unit,
-    onCurrentSetChanged: (String?) -> Unit,
     onBookLongClick: (SearchBook) -> Unit,
 ) {
     val selectedSets = remember(sets) {
@@ -537,7 +520,6 @@ private fun SourceTabLayout(
 
     LaunchedEffect(pagerState.settledPage, selectedSets) {
         viewModel.updateCurrentTab(pagerState.settledPage, selectedSets)
-        onCurrentSetChanged(selectedSets.getOrNull(pagerState.settledPage)?.sourceName)
     }
 
     LaunchedEffect(selectedSets.size) {
@@ -607,12 +589,17 @@ private fun SourceTabLayout(
                         Surface(
                             modifier = Modifier
                                 .height(36.dp)
-                                .clickable {
-                                    selectedTabIndex = index
-                                    coroutineScope.launch {
-                                        pagerState.animateScrollToPage(index)
+                                .combinedClickable(
+                                    onClick = {
+                                        selectedTabIndex = index
+                                        coroutineScope.launch {
+                                            pagerState.animateScrollToPage(index)
+                                        }
+                                    },
+                                    onLongClick = {
+                                        onRefresh(set.sourceName)
                                     }
-                                },
+                                ),
                             shape = RoundedCornerShape(16.dp),
                             color = if (isSelected) {
                                 accent.copy(alpha = 0.82f)
