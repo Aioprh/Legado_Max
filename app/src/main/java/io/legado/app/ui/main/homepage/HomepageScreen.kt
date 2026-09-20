@@ -927,6 +927,9 @@ private fun HomepageModuleItem(
                         onTabSelected = { index ->
                             viewModel.selectRankingTab(module.globalId, index)
                         },
+                        onTabLongClick = { index ->
+                            viewModel.refreshRankingTab(module.globalId, index)
+                        },
                         onBookClick = onBookClick,
                         onBookLongClick = onBookLongClick,
                         onArrowClick = { tab ->
@@ -1001,7 +1004,7 @@ private fun LoadMoreFooter(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 private fun RankingTabsModule(
     tabs: List<RankingTabData>,
@@ -1009,6 +1012,7 @@ private fun RankingTabsModule(
     moduleType: HomepageModuleType,
     globalId: String,
     onTabSelected: (Int) -> Unit,
+    onTabLongClick: (Int) -> Unit,
     onBookClick: (SearchBook) -> Unit,
     onBookLongClick: (SearchBook) -> Unit,
     onArrowClick: (RankingTabData) -> Unit,
@@ -1037,6 +1041,11 @@ private fun RankingTabsModule(
                     tabs.forEachIndexed { index, tab ->
                         val accent = pageAccentColor()
                         Surface(
+                            modifier = Modifier.combinedClickable(
+                                onClick = { onTabSelected(index) },
+                                // 长按分类 Tab 仅刷新该分类内容
+                                onLongClick = { onTabLongClick(index) }
+                            ),
                             color = if (selectedIndex == index)
                                 accent.copy(alpha = 0.12f)
                             else Color.Transparent,
@@ -1046,7 +1055,6 @@ private fun RankingTabsModule(
                             shape = RoundedCornerShape(8.dp),
                             border = if (selectedIndex == index) null
                             else BorderStroke(1.dp, pageSecondaryTextColor().copy(alpha = 0.2f)),
-                            onClick = { onTabSelected(index) }
                         ) {
                             Text(
                                 text = tab.title,

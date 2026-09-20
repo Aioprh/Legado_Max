@@ -898,6 +898,45 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
     }
 
     /**
+     * 刷新排行榜模块的单个分类 Tab（仅重新加载该分类第一页，不影响其他 Tab）
+     *
+     * @param globalId 模块 ID
+     * @param tabIndex 要刷新的 Tab 索引
+     */
+    fun refreshRankingTab(globalId: String, tabIndex: Int) {
+        viewModelScope.launch {
+            val module = gateway.getById(globalId) ?: return@launch
+            val rssSource = appDb.rssSourceDao.getByKey(module.sourceUrl)
+            // 重置指定 Tab 为未加载状态
+            _moduleContentStates.update { states ->
+                val current = states[globalId] as? ModuleLoadState.RankingTabs ?: return@update states
+                val tabs = current.tabs.toMutableList()
+                val tab = tabs.getOrNull(tabIndex) ?: return@update states
+                tabs[tabIndex] = tab.copy(
+                    books = null,
+                    page = 1,
+                    hasMore = true,
+                    isLoadingMore = false,
+                    errorMessage = null
+                )
+                states + (globalId to current.copy(tabs = tabs))
+            }
+            // 重新加载该 Tab 第一页
+            val state = _moduleContentStates.value[globalId] as? ModuleLoadState.RankingTabs ?: return@launch
+            val tab = state.tabs.getOrNull(tabIndex) ?: return@launch
+            loadRankingTab(
+                moduleId = globalId,
+                sourceUrl = module.sourceUrl,
+                rssSource = rssSource,
+                index = tabIndex,
+                title = tab.title,
+                url = tab.exploreUrl ?: "",
+                page = 1
+            )
+        }
+    }
+
+    /**
      * 刷新首页模块内容（重新加载已存在的模块数据，不自动从书源同步新模块）
      * @param setName 可选的书源集名称，如果指定则只刷新该集的模块
      */
