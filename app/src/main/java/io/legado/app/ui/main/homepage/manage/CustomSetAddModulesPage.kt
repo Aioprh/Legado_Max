@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import io.legado.app.R
 import io.legado.app.domain.model.HomepageModuleType
 import io.legado.app.ui.main.homepage.HomepageModuleManageUi
+import io.legado.app.ui.main.homepage.manage.BottomSheetLazyColumn
 import io.legado.app.ui.main.homepage.HomepageViewModel
 import io.legado.app.ui.widget.components.VerticalScrollbar
 import io.legado.app.ui.widget.components.card.GlassCard
@@ -86,7 +86,7 @@ fun CustomSetAddModulesPage(
     val listState = rememberLazyListState()
 
     Box(modifier = Modifier.fillMaxWidth()) {
-        LazyColumn(
+        BottomSheetLazyColumn(
             state = listState,
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
