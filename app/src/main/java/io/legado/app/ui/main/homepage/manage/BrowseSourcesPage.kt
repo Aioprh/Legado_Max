@@ -187,7 +187,7 @@ fun BrowseSourcesPage(
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 items(filteredSources) { source ->
                     GlassCard(
@@ -197,7 +197,7 @@ fun BrowseSourcesPage(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 12.dp),
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             // 书源名称和模块数量
