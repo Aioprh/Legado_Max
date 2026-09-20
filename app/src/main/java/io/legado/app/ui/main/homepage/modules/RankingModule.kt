@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -83,7 +84,7 @@ fun RankingModule(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(start = 54.dp, end = 10.dp)
-                            .size(height = 0.5.dp, width = 0.dp)
+                            .height(0.5.dp)
                             .background(
                                 MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
                             )
