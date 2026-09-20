@@ -22,11 +22,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -180,34 +175,8 @@ fun HomepageModuleManageSheet(
 
     // AnimatedContent 内的 LazyColumn 需要有限高度约束才能正常渲染。
     // 使用屏幕高度的 80% 作为容器高度（与 ExploreKindSelectSheet 策略一致），
-    // 配合 AppModalBottomSheet 的 verticalScroll 实现内容溢出时滚动。
+    // 页面内部使用各自的 LazyColumn，弹窗外层保持非滚动，避免同方向滚动容器竞争。
     val contentHeight = LocalConfiguration.current.screenHeightDp.dp * 0.8f
-
-    // LazyColumn 到达边界后，Compose 默认会把未消费的滚动增量继续传给父级。
-    // ModalBottomSheet 会把这部分增量解释为拖拽弹窗，从而出现“列表到底后整张弹窗上下抖动”。
-    // 这里不是关闭弹窗拖拽，而是只截断管理页内容产生的边界剩余滚动，让 BottomSheet 继续保留正常拖拽能力。
-    val contentNestedScrollConnection = remember {
-        object : NestedScrollConnection {
-            override fun onPostScroll(
-                consumed: Offset,
-                available: Offset,
-                source: NestedScrollSource
-            ): Offset {
-                return if (source == NestedScrollSource.UserInput) {
-                    Offset(x = 0f, y = available.y)
-                } else {
-                    Offset.Zero
-                }
-            }
-
-            override suspend fun onPostFling(
-                consumed: Velocity,
-                available: Velocity
-            ): Velocity {
-                return Velocity(x = 0f, y = available.y)
-            }
-        }
-    }
 
     AppModalBottomSheet(
         show = show,
@@ -238,7 +207,6 @@ fun HomepageModuleManageSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(contentHeight)
-                .nestedScroll(contentNestedScrollConnection)
         ) { page ->
             when (page) {
                 // 集列表页：展示所有集，支持创建自定义集和浏览书源
