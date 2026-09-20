@@ -22,6 +22,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -178,15 +183,39 @@ fun HomepageModuleManageSheet(
     // 配合 AppModalBottomSheet 的 verticalScroll 实现内容溢出时滚动。
     val contentHeight = LocalConfiguration.current.screenHeightDp.dp * 0.8f
 
+    // LazyColumn 到达边界后，Compose 默认会把未消费的滚动增量继续传给父级。
+    // ModalBottomSheet 会把这部分增量解释为拖拽弹窗，从而出现“列表到底后整张弹窗上下抖动”。
+    // 这里不是关闭弹窗拖拽，而是只截断管理页内容产生的边界剩余滚动，让 BottomSheet 继续保留正常拖拽能力。
+    val contentNestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource
+            ): Offset {
+                return if (source == NestedScrollSource.UserInput) {
+                    Offset(x = 0f, y = available.y)
+                } else {
+                    Offset.Zero
+                }
+            }
+
+            override suspend fun onPostFling(
+                consumed: Velocity,
+                available: Velocity
+            ): Velocity {
+                return Velocity(x = 0f, y = available.y)
+            }
+        }
+    }
+
     AppModalBottomSheet(
         show = show,
         onDismissRequest = handleDismiss,
         title = title,
         skipPartiallyExpanded = true,
-        // 管理页内部使用 LazyColumn，自身负责滚动；禁止外层滚动避免到底后与 BottomSheet 争抢手势导致上下抖动。
         scrollable = false,
-        // 模块管理页面由内部 LazyColumn 接管滚动，禁止 BottomSheet 本身响应拖拽，避免列表到底后剩余手势让整张弹窗上下位移。
-        sheetGesturesEnabled = false,
+        sheetGesturesEnabled = true,
         startAction = if (canGoBack) {
             {
                 IconButton(onClick = { handleBack() }) {
@@ -206,7 +235,10 @@ fun HomepageModuleManageSheet(
                 slideInHorizontally { fullWidth -> fullWidth * direction } togetherWith
                         slideOutHorizontally { fullWidth -> -fullWidth * direction }
             },
-            modifier = Modifier.fillMaxWidth().height(contentHeight)
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(contentHeight)
+                .nestedScroll(contentNestedScrollConnection)
         ) { page ->
             when (page) {
                 // 集列表页：展示所有集，支持创建自定义集和浏览书源
