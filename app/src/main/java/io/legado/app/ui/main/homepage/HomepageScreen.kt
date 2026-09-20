@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ViewModule
@@ -145,6 +146,8 @@ fun HomepageScreen(
     var showLayoutMenu by remember { mutableStateOf(false) }
     val layoutMode by viewModel.layoutMode.collectAsStateWithLifecycle()
     val preloadMode by viewModel.preloadMode.collectAsStateWithLifecycle()
+    // 分源Tab模式下当前选中的集名称，用于刷新按钮定位刷新范围
+    var currentSetName by remember { mutableStateOf<String?>(null) }
 
     // 书籍底部弹窗状态
     var showBookSheet by remember { mutableStateOf(false) }
@@ -220,6 +223,20 @@ fun HomepageScreen(
                             .weight(1f)
                             .padding(start = 16.dp)
                     )
+                    // 刷新按钮：混合列表模式刷新全部，分源Tab模式仅刷新当前集
+                    IconButton(onClick = {
+                        if (layoutMode == 1) {
+                            viewModel.onRefresh(currentSetName)
+                        } else {
+                            viewModel.onRefresh()
+                        }
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = stringResource(R.string.refresh),
+                            tint = topBarColors.contentColor
+                        )
+                    }
                     // 搜索按钮
                     IconButton(onClick = {
                         context.startActivity<SearchActivity>()
@@ -366,6 +383,7 @@ fun HomepageScreen(
                 context = context,
                 isRefreshing = uiState.isRefreshing,
                 onRefresh = viewModel::onRefresh,
+                onCurrentSetChanged = { name -> currentSetName = name },
                 onBookLongClick = { book ->
                     selectedBook = book
                     selectedBookShelfState = viewModel.getCurrentBookShelfState(book)
@@ -503,6 +521,7 @@ private fun SourceTabLayout(
     context: android.content.Context,
     isRefreshing: Boolean,
     onRefresh: (String?) -> Unit,
+    onCurrentSetChanged: (String?) -> Unit,
     onBookLongClick: (SearchBook) -> Unit,
 ) {
     val selectedSets = remember(sets) {
@@ -518,6 +537,7 @@ private fun SourceTabLayout(
 
     LaunchedEffect(pagerState.settledPage, selectedSets) {
         viewModel.updateCurrentTab(pagerState.settledPage, selectedSets)
+        onCurrentSetChanged(selectedSets.getOrNull(pagerState.settledPage)?.sourceName)
     }
 
     LaunchedEffect(selectedSets.size) {
