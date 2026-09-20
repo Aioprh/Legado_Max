@@ -1081,6 +1081,11 @@ private fun RankingTabsModule(
             }
         }
 
+        // Tab 与内容列表之间保留明确的视觉间距，避免胶囊 Tab 与内容卡片贴合。
+        if (tabs.size > 1) {
+            Spacer(modifier = Modifier.height(10.dp))
+        }
+
         // 内容区域（按 selectedIndex 做 key，切换 Tab 时重置分页/滚动状态）
         Box {
             androidx.compose.runtime.key(selectedIndex) {
