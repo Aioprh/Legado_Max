@@ -39,7 +39,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import io.legado.app.R
 import io.legado.app.ui.main.homepage.HomepageSourceManageUi
-import io.legado.app.ui.main.homepage.manage.BottomSheetLazyColumn
 import io.legado.app.ui.theme.pageSecondaryTextColor
 import io.legado.app.ui.widget.components.VerticalScrollbar
 import io.legado.app.ui.widget.components.card.GlassCard
