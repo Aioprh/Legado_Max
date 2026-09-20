@@ -29,6 +29,7 @@ fun AppModalBottomSheet(
     modifier: Modifier = Modifier,
     skipPartiallyExpanded: Boolean = true,
     scrollable: Boolean = true,
+    sheetGesturesEnabled: Boolean = true,
     startAction: (@Composable () -> Unit)? = null,
     endAction: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
@@ -40,6 +41,7 @@ fun AppModalBottomSheet(
         ModalBottomSheet(
             onDismissRequest = onDismissRequest,
             sheetState = sheetState,
+            sheetGesturesEnabled = sheetGesturesEnabled,
             modifier = modifier,
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.onSurface
