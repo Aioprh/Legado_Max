@@ -35,7 +35,7 @@
                 android:clipToPadding="false"
                 android:orientation="vertical"
                 android:paddingStart="12dp"
-                android:paddingTop="2dp"
+                android:paddingTop="8dp"
                 android:paddingEnd="12dp"
                 android:paddingBottom="4dp"
                 android:visibility="gone">
@@ -43,16 +43,16 @@
                 <LinearLayout
                     android:id="@+id/ll_discover_source_row"
                     android:layout_width="match_parent"
-                    android:layout_height="52dp"
+                    android:layout_height="50dp"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
-                    android:paddingTop="6dp"
+                    android:paddingTop="4dp"
                     android:paddingBottom="4dp">
 
                     <LinearLayout
                         android:id="@+id/ll_discover_source_select"
                         android:layout_width="wrap_content"
-                        android:layout_height="42dp"
+                        android:layout_height="40dp"
                         android:background="@drawable/bg_modern_discovery_glass"
                         android:clickable="true"
                         android:focusable="true"
@@ -70,7 +70,7 @@
                             android:includeFontPadding="false"
                             android:maxLines="1"
                             android:textColor="@color/primaryText"
-                            android:textSize="18sp"
+                            android:textSize="16sp"
                             android:textStyle="bold"
                             tools:text="默认书源" />
 
@@ -92,8 +92,8 @@
 
                     <androidx.appcompat.widget.AppCompatImageButton
                         android:id="@+id/btn_discover_source_search"
-                        android:layout_width="42dp"
-                        android:layout_height="42dp"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
                         android:background="@drawable/bg_modern_discovery_glass"
                         android:contentDescription="@string/search"
                         android:padding="10dp"
@@ -108,8 +108,8 @@
 
                     <androidx.appcompat.widget.AppCompatImageButton
                         android:id="@+id/btn_discover_tag_filter"
-                        android:layout_width="42dp"
-                        android:layout_height="42dp"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
                         android:background="@drawable/bg_modern_discovery_glass"
                         android:contentDescription="@string/setting"
                         android:padding="10dp"
@@ -123,8 +123,8 @@
 
                     <androidx.appcompat.widget.AppCompatImageButton
                         android:id="@+id/btn_discover_more"
-                        android:layout_width="42dp"
-                        android:layout_height="42dp"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
                         android:background="@drawable/bg_modern_discovery_glass"
                         android:contentDescription="@string/menu"
                         android:padding="10dp"
@@ -137,7 +137,7 @@
                 <LinearLayout
                     android:id="@+id/ll_discover_selects_bar"
                     android:layout_width="match_parent"
-                    android:layout_height="44dp"
+                    android:layout_height="40dp"
                     android:layout_marginTop="2dp"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
@@ -151,9 +151,9 @@
 
                     <androidx.appcompat.widget.AppCompatImageButton
                         android:id="@+id/btn_discover_selects_expand"
-                        android:layout_width="38dp"
-                        android:layout_height="38dp"
-                        android:layout_marginStart="6dp"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_marginStart="4dp"
                         android:background="@drawable/bg_modern_discovery_glass"
                         android:contentDescription="@string/expand"
                         android:padding="9dp"
@@ -166,8 +166,8 @@
                 <LinearLayout
                     android:id="@+id/ll_discover_tags_bar"
                     android:layout_width="match_parent"
-                    android:layout_height="44dp"
-                    android:layout_marginTop="6dp"
+                    android:layout_height="40dp"
+                    android:layout_marginTop="4dp"
                     android:gravity="center_vertical"
                     android:orientation="horizontal">
 
@@ -179,9 +179,9 @@
 
                     <androidx.appcompat.widget.AppCompatImageButton
                         android:id="@+id/btn_discover_tags_expand"
-                        android:layout_width="38dp"
-                        android:layout_height="38dp"
-                        android:layout_marginStart="6dp"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_marginStart="4dp"
                         android:background="@drawable/bg_modern_discovery_glass"
                         android:contentDescription="@string/expand"
                         android:padding="9dp"
