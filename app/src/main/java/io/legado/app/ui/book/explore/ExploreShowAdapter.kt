@@ -157,39 +157,38 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
 
         binding.tvIntroduceWaterfall.text = item.intro?.trim().orEmpty()
 
-        // 统一瀑布流卡片高度，避免简介长短不同造成三列卡片参差不齐。
-        val density = context.resources.displayMetrics.density
+        // 卡片间距与封面宽度：列数 + 间距决定内容宽度
         val spacing = calcColumnSpacing()
         val contentWidth = (context.resources.displayMetrics.widthPixels / columnCount - spacing).coerceAtLeast(1)
-        val contentAreaHeight = (210 * density).toInt()
-        binding.root.layoutParams = binding.root.layoutParams.apply {
-            height = contentWidth + contentAreaHeight
+        val halfSpacing = spacing / 2
+
+        // 封面按 1:1 方形展示（XML 已设约束，确保宽高一致）
+        binding.ivCoverWaterfall.layoutParams = binding.ivCoverWaterfall.layoutParams.apply {
+            width = ViewGroup.LayoutParams.MATCH_PARENT
+            height = contentWidth
         }
 
-        // 固定简介可见行数，超出部分省略，确保所有卡片保持相同高度。
+        // 卡片间距：让列之间留出统一空白
+        (binding.root.layoutParams as? ViewGroup.MarginLayoutParams)?.let {
+            it.setMargins(halfSpacing, halfSpacing, halfSpacing, halfSpacing)
+            binding.root.layoutParams = it
+        }
+
+        // 简介按列数限制最大行数，避免极端情况下卡片高度失控
         binding.tvIntroduceWaterfall.maxLines = when {
             columnCount <= 2 -> 7
             columnCount == 3 -> 5
             else -> 4
         }
 
+        // 防重用错乱：相同数据跳过重复加载
         val imageView = binding.ivCoverWaterfall
         val tagKey = "${item.bookUrl}_${item.origin}_$columnCount"
         val lastTag = imageView.tag as? String
         if (lastTag == tagKey) return
         imageView.tag = tagKey
-        val halfSpacing = spacing / 2
 
         imageView.adjustViewBounds = false
-        val lp = imageView.layoutParams
-        lp.width = ViewGroup.LayoutParams.MATCH_PARENT
-        lp.height = contentWidth
-        imageView.layoutParams = lp
-
-        (binding.root.layoutParams as? ViewGroup.MarginLayoutParams)?.let {
-            it.setMargins(halfSpacing, halfSpacing, halfSpacing, halfSpacing)
-            binding.root.layoutParams = it
-        }
 
         // 使用 CoverLoader 加载封面，支持封面设置，保持自由图片比例
         CoverLoader.load(
