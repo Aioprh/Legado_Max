@@ -116,10 +116,10 @@ class RoundedTagBarView @JvmOverloads constructor(
         addView(
             recyclerView,
             LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT).apply {
-                leftMargin = 4.dp
-                rightMargin = 4.dp
-                topMargin = 3.dp
-                bottomMargin = 3.dp
+                leftMargin = 3.dp
+                rightMargin = 3.dp
+                topMargin = 2.dp
+                bottomMargin = 2.dp
             }
         )
     }
@@ -287,7 +287,7 @@ class RoundedTagBarView @JvmOverloads constructor(
                 .inflate(R.layout.item_bookshelf_group_tag, parent, false) as TextView
             textView.gravity = Gravity.CENTER
             textView.includeFontPadding = false
-            textView.minHeight = 32.dp
+            textView.minHeight = 30.dp
             return TagViewHolder(textView)
         }
 
@@ -295,7 +295,8 @@ class RoundedTagBarView @JvmOverloads constructor(
             val item = items[position]
             val textView = holder.textView
             val horizontalPadding = resources.getDimensionPixelSize(R.dimen.bookshelf_tag_item_padding_horizontal)
-            textView.setPadding(horizontalPadding + 2.dp, 0, horizontalPadding + 2.dp, 0)
+            textView.setPadding(horizontalPadding, 0, horizontalPadding, 0)
+            textView.minimumHeight = 30.dp
             textView.setTextColor(
                 ColorStateList.valueOf(if (position == selectedIndex) selectedTextColor else normalTextColor)
             )
@@ -314,7 +315,7 @@ class RoundedTagBarView @JvmOverloads constructor(
             val selected = position == selectedIndex && selectedBackgroundVisible
             textView.background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                cornerRadius = 16.dp.toFloat()
+                cornerRadius = 15.dp.toFloat()
                 setColor(if (selected) glassSelectedFill else glassNormalFill)
                 setStroke(1.dp, if (selected) glassSelectedStroke else glassNormalStroke)
             }
