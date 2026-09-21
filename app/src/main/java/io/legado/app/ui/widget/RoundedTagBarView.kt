@@ -86,6 +86,8 @@ class RoundedTagBarView @JvmOverloads constructor(
         clipChildren = true
         clipToPadding = true
         isHorizontalScrollBarEnabled = false
+        isVerticalScrollBarEnabled = false
+        isScrollbarFadingEnabled = true
         isHorizontalFadingEdgeEnabled = false
         isVerticalFadingEdgeEnabled = false
         setFadingEdgeLength(0)
@@ -118,10 +120,10 @@ class RoundedTagBarView @JvmOverloads constructor(
             LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT).apply {
                 leftMargin = 3.dp
                 rightMargin = 3.dp
-                // 让小胶囊在大胶囊内部真正垂直居中：
-                // 28dp 标签 + 2dp 上下 margin = 32dp，44dp 外框中上下各留 6dp。
-                topMargin = 6.dp
-                bottomMargin = 6.dp
+                // 44dp 外框中放置 30dp 小胶囊，上下各 7dp，确保严格垂直居中。
+                height = 30.dp
+                topMargin = 7.dp
+                bottomMargin = 7.dp
             }
         )
     }
@@ -338,6 +340,9 @@ class RoundedTagBarView @JvmOverloads constructor(
             val horizontalPadding = resources.getDimensionPixelSize(R.dimen.bookshelf_tag_item_padding_horizontal)
             textView.setPadding(horizontalPadding, 0, horizontalPadding, 0)
             textView.minimumHeight = 30.dp
+            textView.layoutParams = (textView.layoutParams as? ViewGroup.MarginLayoutParams)?.apply {
+                height = 30.dp
+            } ?: textView.layoutParams
             textView.setTextColor(
                 ColorStateList.valueOf(if (position == selectedIndex) selectedTextColor else normalTextColor)
             )
