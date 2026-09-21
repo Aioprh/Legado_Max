@@ -170,7 +170,7 @@ class RoundedTagBarView @JvmOverloads constructor(
             shape = GradientDrawable.RECTANGLE
             cornerRadius = 20.dp.toFloat()
             setColor(glassSurface)
-            setStroke(1.dp, glassStroke)
+            setStroke(0, 0)
         }
         elevation = 3.dp.toFloat()
         translationZ = 1.dp.toFloat()
@@ -179,9 +179,9 @@ class RoundedTagBarView @JvmOverloads constructor(
         adapter.selectedTextColor = Color.WHITE
         adapter.selectedBackgroundColor = context.accentColor
         adapter.glassNormalFill = if (isNight) 0x331F1F22 else 0x70FFFFFF
-        adapter.glassNormalStroke = if (isNight) 0x55FFFFFF else 0x8CFFFFFF.toInt()
+        adapter.glassNormalStroke = 0
         adapter.glassSelectedFill = ColorUtilsCompat.withAlpha(context.accentColor, 0.82f)
-        adapter.glassSelectedStroke = 0x99FFFFFF.toInt()
+        adapter.glassSelectedStroke = 0
         adapter.notifyDataSetChanged()
     }
 
@@ -278,9 +278,9 @@ class RoundedTagBarView @JvmOverloads constructor(
         var selectedTextColor: Int = context.accentColor
         var normalTextColor: Int = context.primaryTextColor
         var glassNormalFill: Int = 0x55FFFFFF
-        var glassNormalStroke: Int = 0x88FFFFFF.toInt()
+        var glassNormalStroke: Int = 0
         var glassSelectedFill: Int = context.accentColor
-        var glassSelectedStroke: Int = 0xAAFFFFFF.toInt()
+        var glassSelectedStroke: Int = 0
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TagViewHolder {
             val textView = LayoutInflater.from(parent.context)

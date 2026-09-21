@@ -62,7 +62,7 @@
     <string name="action_search">Search</string>
     <string name="action_download">Download</string>
     <string name="all_versions">All Versions</string>
-    <string name="select">Select</string>
+    <string name="select">选择</string>
     <string name="expand">Expand</string>
     <string name="discover_group_other">Other</string>
     <string name="discover_group_unnamed">Category %1$d</string>
