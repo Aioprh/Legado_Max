@@ -1410,8 +1410,9 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
         val raw = resolveDiscoverTagText(kind).trim()
         if (raw.isBlank()) return true
         val normalized = normalizeDiscoverGroupTitle(raw)
-        if (normalized.isBlank()) return true
-        return normalized.length >= 8
+        // 仅当标题归一化后为空时视为异常，不再因长度过长而替换为"分类N"，
+        // 长标题交由胶囊 UI 的省略号机制处理，保证用户看到具体分类名。
+        return normalized.isBlank()
     }
 
     private fun normalizeDiscoverGroupTitle(raw: String): String {
