@@ -111,7 +111,7 @@ class RoundedTagBarView @JvmOverloads constructor(
         clipToOutline = true
         outlineProvider = object : ViewOutlineProvider() {
             override fun getOutline(view: View, outline: Outline) {
-                outline.setRoundRect(0, 0, view.width, view.height, 20.dp.toFloat())
+                outline.setRoundRect(0, 0, view.width, view.height, 18.dp.toFloat())
             }
         }
         applyTopBarStyle(force = true)
@@ -133,7 +133,7 @@ class RoundedTagBarView @JvmOverloads constructor(
         super.onSizeChanged(w, h, oldw, oldh)
         outerClipPath.reset()
         if (w > 0 && h > 0) {
-            val radius = 20.dp.toFloat().coerceAtMost(h / 2f)
+            val radius = 18.dp.toFloat().coerceAtMost(h / 2f)
             outerClipPath.addRoundRect(
                 0f,
                 0f,
@@ -167,18 +167,23 @@ class RoundedTagBarView @JvmOverloads constructor(
         styleSignature = signature
 
         val isNight = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val compact = items.size <= 1
         val baseSurface = backgroundOverrideColor ?: if (isNight) 0x661B1B1D else 0xB8FFFFFF.toInt()
-        val glassSurface = ColorUtilsCompat.withAlpha(baseSurface, if (isNight) 0.92f else 0.86f)
-        val glassStroke = if (isNight) 0x55FFFFFF else 0x99FFFFFF.toInt()
+        val glassSurface = ColorUtilsCompat.withAlpha(baseSurface, if (isNight) 0.90f else 0.78f)
+        val glassStroke = if (isNight) 0x44FFFFFF else 0x78FFFFFF.toInt()
 
-        background = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = 20.dp.toFloat()
-            setColor(glassSurface)
-            setStroke(1.dp, glassStroke)
+        background = if (compact) {
+            GradientDrawable().apply { setColor(Color.TRANSPARENT) }
+        } else {
+            GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 18.dp.toFloat()
+                setColor(glassSurface)
+                setStroke(1.dp, glassStroke)
+            }
         }
-        elevation = 3.dp.toFloat()
-        translationZ = 1.dp.toFloat()
+        elevation = if (compact) 0f else 2.dp.toFloat()
+        translationZ = if (compact) 0f else 1.dp.toFloat()
 
         adapter.normalTextColor = if (isNight) Color.argb(225, 255, 255, 255) else context.primaryTextColor
         adapter.selectedTextColor = Color.WHITE
@@ -216,8 +221,9 @@ class RoundedTagBarView @JvmOverloads constructor(
             setSelectedIndex(selectedIndex, smooth = false)
             return
         }
-        this.items = items.toList()
+        this.items = items.filter { it.text.toString().trim().isNotEmpty() }
         this.selectedIndex = normalizeIndex(selectedIndex)
+        applyTopBarStyle(force = true)
         adapter.notifyDataSetChanged()
         recyclerView.post { centerItemsIfFits() }
         if (this.selectedIndex != RecyclerView.NO_POSITION) {
