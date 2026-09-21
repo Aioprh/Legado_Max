@@ -109,15 +109,17 @@ class GradientSurfaceDrawable(private val style: SurfaceStyle) : Drawable() {
     private val path = Path()
     private val rectF = RectF()
     private val strokeRectF = RectF()
+    // 避免 apply 块内 `style` 被解析为 Paint.style（Paint.Style）而遮蔽外层 SurfaceStyle
+    private val surface = style
     private val fillPaint = Paint().apply {
         isAntiAlias = true
-        color = style.tintColor
+        color = surface.tintColor
         style = Paint.Style.FILL
     }
     private val strokePaint = Paint().apply {
         isAntiAlias = true
-        color = style.strokeColor
-        strokeWidth = style.strokeWidthPx
+        color = surface.strokeColor
+        strokeWidth = surface.strokeWidthPx
         style = Paint.Style.STROKE
     }
 

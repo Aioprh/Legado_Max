@@ -30,6 +30,9 @@ class SourceLoginJsExtensions(
     interface Callback {
         fun upUiData(data: Map<String, Any?>?)
         fun reUiView(deltaUp: Boolean = false)
+
+        /** 登录页内通过 JS 打开链接（新版发现移植用，默认不处理）。 */
+        fun open(name: String, url: String?, title: String?, origin: String?): Boolean = false
     }
 
     fun upLoginData(data: Map<String, Any?>?) {

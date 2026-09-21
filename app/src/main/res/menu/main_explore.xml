@@ -62,6 +62,12 @@
     </item>
 
     <item
+        android:id="@+id/menu_reload_book_source"
+        android:title="@string/reload_book_source"
+        android:icon="@drawable/ic_refresh_black_24dp"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/menu_switch_modern_discovery"
         android:title="@string/switch_to_modern_discovery"
         android:icon="@drawable/ic_cfg_source"
