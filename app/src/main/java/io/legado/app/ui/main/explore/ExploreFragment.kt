@@ -225,7 +225,10 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
                 upExploreData(searchView.query?.toString())
             }
         }
-        binding.llDiscoverSourceRow.applyStatusBarPadding(withInitialPadding = true)
+        // 新版发现页隐藏 TitleBar 后，状态栏 inset 必须加在整个内容容器上。
+        // 之前加在固定高度的 sourceRow 上，会把状态栏高度挤进 52dp 行高，
+        // 导致第一层分类胶囊向上侵入书源选择区，出现胶囊遮挡顶部按钮/文字。
+        binding.llModernDiscovery.applyStatusBarPadding(withInitialPadding = true)
         binding.rvFind.clipToPadding = false
         binding.rvDiscoverBooks.clipToPadding = false
         updateMainBottomPadding((activity as? MainActivity)?.mainContentBottomPadding() ?: 0)
