@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.Canvas
+import android.text.TextUtils
 import android.graphics.Color
 import android.graphics.Outline
 import android.graphics.Path
@@ -41,7 +42,8 @@ class RoundedTagBarView @JvmOverloads constructor(
 
     data class Item(
         val text: CharSequence,
-        val alpha: Float = 1f
+        val alpha: Float = 1f,
+        val showFullText: Boolean = false
     )
 
     private val layoutManager = LinearLayoutManager(context, RecyclerView.HORIZONTAL, false)
@@ -301,6 +303,13 @@ class RoundedTagBarView @JvmOverloads constructor(
             textView.typeface = textView.context.uiTypeface()
             textView.alpha = item.alpha
             textView.isSelected = position == selectedIndex
+            if (item.showFullText) {
+                textView.maxWidth = Int.MAX_VALUE
+                textView.ellipsize = null
+            } else {
+                textView.maxWidth = resources.getDimensionPixelSize(R.dimen.bookshelf_tag_item_max_width)
+                textView.ellipsize = TextUtils.TruncateAt.END
+            }
 
             val selected = position == selectedIndex && selectedBackgroundVisible
             textView.background = GradientDrawable().apply {

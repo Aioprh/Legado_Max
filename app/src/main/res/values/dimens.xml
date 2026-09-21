@@ -10,6 +10,8 @@
     <dimen name="font_size_middle">16sp</dimen>
     <dimen name="font_size_large">18sp</dimen>
 
+    <dimen name="menu_text_size">16sp</dimen>
+
     <dimen name="fast_scroll_min_thumb_height">24dp</dimen>
 
     <dimen name="line_height">0.8dp</dimen>
@@ -44,6 +46,12 @@
     <!-- Bookshelf tag bar (merged from upstream) -->
     <dimen name="bookshelf_tag_bar_height">38dp</dimen>
     <dimen name="bookshelf_tag_bar_margin_horizontal">16dp</dimen>
+    <dimen name="bookshelf_tag_bar_margin_top">4dp</dimen>
+    <dimen name="bookshelf_title_row_margin_top">6dp</dimen>
+    <dimen name="bookshelf_title_select_height">40dp</dimen>
+    <dimen name="bookshelf_title_arrow_size">20dp</dimen>
+    <dimen name="bookshelf_action_button_size">40dp</dimen>
+    <dimen name="bookshelf_action_button_padding">8dp</dimen>
     <dimen name="bookshelf_tag_bar_padding_horizontal">3dp</dimen>
     <dimen name="bookshelf_tag_bar_padding_vertical">1dp</dimen>
     <dimen name="bookshelf_tag_recycler_padding_vertical">4dp</dimen>
@@ -51,4 +59,5 @@
     <dimen name="bookshelf_tag_item_margin_horizontal">2dp</dimen>
     <dimen name="bookshelf_tag_item_min_width">36dp</dimen>
     <dimen name="bookshelf_tag_item_padding_horizontal">12dp</dimen>
+    <dimen name="bookshelf_tag_item_max_width">96dp</dimen>
 </resources>

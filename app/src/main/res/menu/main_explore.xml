@@ -61,4 +61,10 @@
 
     </item>
 
+    <item
+        android:id="@+id/menu_switch_modern_discovery"
+        android:title="@string/switch_to_modern_discovery"
+        android:icon="@drawable/ic_cfg_source"
+        app:showAsAction="never" />
+
 </menu>

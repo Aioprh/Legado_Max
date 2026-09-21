@@ -1,5 +1,8 @@
 package io.legado.app.data.entities.rule
 
+import android.view.View
+import io.legado.app.R
+
 data class RowUi(
     val name: String = "",
     val type: String = "text",
@@ -23,6 +26,23 @@ data class RowUi(
 
     fun style(): FlexChildStyle {
         return style ?: FlexChildStyle.defaultStyle
+    }
+
+    val isChoice: Boolean
+        get() = type == Type.select || type == Type.toggle
+
+    val isAction: Boolean
+        get() = type == Type.button
+
+    val modernBackgroundRes: Int
+        get() = if (isAction) {
+            R.drawable.bg_book_info_action_secondary
+        } else {
+            R.drawable.bg_book_info_action_secondary
+        }
+
+    fun applyModernStyle(view: View) {
+        view.setBackgroundResource(modernBackgroundRes)
     }
 
     override fun equals(other: Any?): Boolean {

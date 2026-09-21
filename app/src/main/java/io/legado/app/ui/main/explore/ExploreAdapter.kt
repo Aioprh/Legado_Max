@@ -1289,6 +1289,21 @@ class ExploreAdapter(context: Context, val callBack: CallBack) :
     }
 
     /**
+     * 重新加载全部书源的发现分类
+     * 清除分类缓存后整体刷新列表
+     */
+    fun reloadExplore() {
+        val sources = getItems()
+        sourceKinds.clear()
+        callBack.scope.launch {
+            withContext(IO) {
+                sources.forEach { it.clearExploreKindsCache() }
+            }
+            notifyDataSetChanged()
+        }
+    }
+
+    /**
      * 刷新展开的项目
      * 
      * @param force 是否强制刷新（重新创建内容），默认 false
