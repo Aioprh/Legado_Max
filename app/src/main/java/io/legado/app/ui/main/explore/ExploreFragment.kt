@@ -1626,7 +1626,7 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
             title = getString(R.string.modern_discovery_select),
             items = discoverTagItems.mapIndexed { index, item ->
                 ExpandableTagSelector.GridItem(
-                    text = item.text,
+                    text = stripDiscoverTagPrefix(item.text),
                     selected = index == selectedDiscoverTagIndex,
                     value = index
                 )
@@ -1638,6 +1638,19 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
                 return@onSelected
             }
             selectDiscoverTag(index, item, selectTab = true)
+        }
+    }
+
+    /**
+     * 去掉发现标签文本中的分类前缀（"·" 之前的部分），
+     * 使选择器中的标签更简短、可多列排列，避免冗余前缀导致整行独占。
+     */
+    private fun stripDiscoverTagPrefix(text: String): String {
+        val dotIndex = text.indexOf('·')
+        return if (dotIndex > 0 && dotIndex < text.length - 1) {
+            text.substring(dotIndex + 1)
+        } else {
+            text
         }
     }
 
