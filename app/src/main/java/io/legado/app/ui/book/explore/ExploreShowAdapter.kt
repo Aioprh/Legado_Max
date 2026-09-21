@@ -178,7 +178,9 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         val lastTag = imageView.tag as? String
         if (lastTag == tagKey) return
         imageView.tag = tagKey
+        val spacing = calcColumnSpacing()
         val halfSpacing = spacing / 2
+        val contentWidth = context.resources.displayMetrics.widthPixels / columnCount - spacing
 
         imageView.adjustViewBounds = false
         val lp = imageView.layoutParams
