@@ -175,19 +175,20 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         val lastTag = imageView.tag as? String
         if (lastTag == tagKey) return
         imageView.tag = tagKey
+        val spacing = calcColumnSpacing()
+        val halfSpacing = spacing / 2
+        val contentWidth = context.resources.displayMetrics.widthPixels / columnCount - spacing
+
         imageView.adjustViewBounds = false
         val lp = imageView.layoutParams
         lp.width = ViewGroup.LayoutParams.MATCH_PARENT
         lp.height = contentWidth
         imageView.layoutParams = lp
 
-        val spacing = calcColumnSpacing()
-        val halfSpacing = spacing / 2
         (binding.root.layoutParams as? ViewGroup.MarginLayoutParams)?.let {
             it.setMargins(halfSpacing, halfSpacing, halfSpacing, halfSpacing)
             binding.root.layoutParams = it
         }
-        val contentWidth = context.resources.displayMetrics.widthPixels / columnCount - spacing
 
         // 使用 CoverLoader 加载封面，支持封面设置，保持自由图片比例
         CoverLoader.load(
