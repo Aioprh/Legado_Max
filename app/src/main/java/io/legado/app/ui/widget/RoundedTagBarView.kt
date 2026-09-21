@@ -51,7 +51,8 @@ class RoundedTagBarView @JvmOverloads constructor(
     private val recyclerView = object : RecyclerView(context) {
         private val clipPath = Path()
 
-        // 标签栏自身不显示滚动条，避免在玻璃胶囊中出现横向白线。\n    override fun onDrawScrollBars(canvas: Canvas) = Unit\n\n    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        // 标签栏自身不显示滚动条，避免在玻璃胶囊中出现横向白线。
+        override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
             super.onSizeChanged(w, h, oldw, oldh)
             clipPath.reset()
             if (w > 0 && h > 0) {
