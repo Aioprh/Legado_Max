@@ -115,18 +115,18 @@ class RoundedTagBarView @JvmOverloads constructor(
             }
         }
         applyTopBarStyle(force = true)
+        // RecyclerView 占满外层胶囊，再用内边距定位 30dp 小胶囊。
+        // 之前把 RecyclerView 本身做成 30dp 高、上下留空，会形成独立的中间渲染层，
+        // 在液态玻璃半透明背景上容易出现一条横向亮缝。
         setPadding(0, 0, 0, 0)
         addView(
             recyclerView,
             LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT).apply {
                 leftMargin = 3.dp
                 rightMargin = 3.dp
-                // 44dp 外框中放置 30dp 小胶囊，上下各 7dp，确保严格垂直居中。
-                height = 30.dp
-                topMargin = 7.dp
-                bottomMargin = 7.dp
             }
         )
+        recyclerView.setPadding(0, 7.dp, 0, 7.dp)
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
