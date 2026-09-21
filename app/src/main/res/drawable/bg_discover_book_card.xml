@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 瀑布流卡片背景：主题适配（浅色半透明白 / 深色半透明黑），圆角与宫格统一为 16dp -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_pressed="true">
         <shape android:shape="rectangle">
-            <solid android:color="#F6FFFFFF" />
-            <corners android:radius="14dp" />
-            <stroke android:width="1dp" android:color="#70FFFFFF" />
+            <solid android:color="@color/btn_bg_press" />
+            <corners android:radius="16dp" />
+            <stroke android:width="0.8dp" android:color="@color/card_border_water" />
         </shape>
     </item>
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="#EFFFFFFF" />
-            <corners android:radius="14dp" />
-            <stroke android:width="1dp" android:color="#35FFFFFF" />
+            <solid android:color="@color/card_bg_water" />
+            <corners android:radius="16dp" />
+            <stroke android:width="0.8dp" android:color="@color/card_border_water" />
         </shape>
     </item>
 </selector>
