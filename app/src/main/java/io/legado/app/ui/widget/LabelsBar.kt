@@ -33,10 +33,10 @@ class LabelsBar @JvmOverloads constructor(
     fun addLabel(label: String, onClick: ((String) -> Unit)?, onLongClick: ((String) -> Boolean)?) {
         val tv = if (unUsedViews.isEmpty()) {
             AccentBgTextView(context, null).apply {
-                setPadding(6.dpToPx(), 3.dpToPx(), 6.dpToPx(), 3.dpToPx())
-                setRadius(10)
+                setPadding(3.dpToPx(), 0, 3.dpToPx(), 0)
+                setRadius(2)
                 val lp = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
-                lp.setMargins(0, 0, 4.dpToPx(), 0)
+                lp.setMargins(0, 0, 2.dpToPx(), 0)
                 layoutParams = lp
                 text = label
                 maxLines = 1

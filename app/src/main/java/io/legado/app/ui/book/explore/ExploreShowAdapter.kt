@@ -113,53 +113,16 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         // 新版发现页不显示书架状态角标，避免封面右上角出现白色方块。
         binding.ivInBookshelfGrid.isVisible = false
         binding.ivInBookshelfDotGrid.isVisible = false
-
-        binding.tvNameGrid.text = item.name
-        binding.tvAuthorGrid.text = item.author
-
-        val kinds = item.getKindList()
-        if (kinds.isEmpty()) {
-            binding.llKindGrid.gone()
-        } else {
-            binding.llKindGrid.visible()
-            binding.llKindGrid.setLabels(kinds)
-        }
-
-        binding.tvIntroduceGrid.text = item.intro?.trim().orEmpty()
-
-        // 简介按列数限制行数，行数同时决定信息区高度，保证各卡片等高
-        val introLines = when {
-            columnCount <= 2 -> 1
-            columnCount == 3 -> 1
-            else -> 1
-        }
-        binding.tvIntroduceGrid.maxLines = introLines
-
-        val density = context.resources.displayMetrics.density
-        val spacing = calcColumnSpacing()
-        val contentWidth = (context.resources.displayMetrics.widthPixels / columnCount - spacing).coerceAtLeast(1)
-        val halfSpacing = spacing / 2
-
-        // 统一卡片高度：封面 1:1 + 固定信息区高度，消除因简介长短、有无标签造成的高矮参差。
-        val infoAreaHeight = when {
-            columnCount <= 2 -> 130
-            columnCount == 3 -> 130
-            else -> 130
-        }
-        binding.root.layoutParams = binding.root.layoutParams.apply {
-            height = contentWidth + (infoAreaHeight * density).toInt()
-            if (this is ViewGroup.MarginLayoutParams) {
-                setMargins(halfSpacing, halfSpacing, halfSpacing, halfSpacing)
-            }
-        }
-
-        // 防重用错乱：相同数据跳过重复加载
-        val tagKey = "${item.bookUrl}_${item.origin}_$columnCount"
-        val lastTag = holder.itemView.tag as? String
-        if (lastTag == tagKey) return
+        val tagKey = "${item.bookUrl}_$columnCount"
+        val lastItemTag = holder.itemView.tag as? String
+        if (lastItemTag == tagKey) return
         holder.itemView.tag = tagKey
-
+        val density = context.resources.displayMetrics.density
+        val itemMargin = (8 * density).toInt()
+        val screenWidth = context.resources.displayMetrics.widthPixels
+        val contentWidth = (screenWidth / columnCount - itemMargin).coerceAtLeast(1)
         binding.ivCoverGrid.load(item, AppConfig.loadCoverOnlyWifi, overrideWidth = contentWidth, overrideHeight = contentWidth)
+        binding.tvNameGrid.text = item.name
     }
 
     private fun calcColumnSpacing(): Int {
@@ -194,47 +157,41 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
 
         binding.tvIntroduceWaterfall.text = item.intro?.trim().orEmpty()
 
-        // 简介按列数限制行数，行数同时决定信息区高度，保证各卡片等高
-        val introLines = when {
-            columnCount <= 2 -> 1
-            columnCount == 3 -> 1
-            else -> 1
-        }
-        binding.tvIntroduceWaterfall.maxLines = introLines
-
+        // 统一瀑布流卡片高度，避免简介长短不同造成三列卡片参差不齐。
         val density = context.resources.displayMetrics.density
         val spacing = calcColumnSpacing()
         val contentWidth = (context.resources.displayMetrics.widthPixels / columnCount - spacing).coerceAtLeast(1)
-        val halfSpacing = spacing / 2
-
-        // 封面按 1:1 方形展示（XML 已设约束，确保宽高一致）
-        binding.ivCoverWaterfall.layoutParams = binding.ivCoverWaterfall.layoutParams.apply {
-            width = ViewGroup.LayoutParams.MATCH_PARENT
-            height = contentWidth
-        }
-
-        // 统一卡片高度：封面 1:1 + 固定信息区高度，消除因简介长短、有无标签/章节
-        // 造成的高矮参差。内部容器 match_parent + 简介约束到底部，内容不足时自动吸附填满。
-        val infoAreaHeight = when {
-            columnCount <= 2 -> 130
-            columnCount == 3 -> 130
-            else -> 130
-        }
+        val contentAreaHeight = (210 * density).toInt()
         binding.root.layoutParams = binding.root.layoutParams.apply {
-            height = contentWidth + (infoAreaHeight * density).toInt()
-            if (this is ViewGroup.MarginLayoutParams) {
-                setMargins(halfSpacing, halfSpacing, halfSpacing, halfSpacing)
-            }
+            height = contentWidth + contentAreaHeight
         }
 
-        // 防重用错乱：相同数据跳过重复加载
+        // 固定简介可见行数，超出部分省略，确保所有卡片保持相同高度。
+        binding.tvIntroduceWaterfall.maxLines = when {
+            columnCount <= 2 -> 7
+            columnCount == 3 -> 5
+            else -> 4
+        }
+
         val imageView = binding.ivCoverWaterfall
         val tagKey = "${item.bookUrl}_${item.origin}_$columnCount"
         val lastTag = imageView.tag as? String
         if (lastTag == tagKey) return
         imageView.tag = tagKey
+        val spacing = calcColumnSpacing()
+        val halfSpacing = spacing / 2
+        val contentWidth = context.resources.displayMetrics.widthPixels / columnCount - spacing
 
         imageView.adjustViewBounds = false
+        val lp = imageView.layoutParams
+        lp.width = ViewGroup.LayoutParams.MATCH_PARENT
+        lp.height = contentWidth
+        imageView.layoutParams = lp
+
+        (binding.root.layoutParams as? ViewGroup.MarginLayoutParams)?.let {
+            it.setMargins(halfSpacing, halfSpacing, halfSpacing, halfSpacing)
+            binding.root.layoutParams = it
+        }
 
         // 使用 CoverLoader 加载封面，支持封面设置，保持自由图片比例
         CoverLoader.load(

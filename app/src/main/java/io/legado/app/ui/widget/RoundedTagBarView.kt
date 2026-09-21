@@ -169,7 +169,7 @@ class RoundedTagBarView @JvmOverloads constructor(
         val isNight = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         val baseSurface = backgroundOverrideColor ?: if (isNight) 0x661B1B1D else 0xB8FFFFFF.toInt()
         val glassSurface = ColorUtilsCompat.withAlpha(baseSurface, if (isNight) 0.92f else 0.86f)
-        val glassStroke = if (isNight) 0x55FFFFFF else 0x99FFFFFF.toInt()
+        val glassStroke = if (isNight) 0x22FFFFFF else 0x22FFFFFF.toInt()
 
         background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
