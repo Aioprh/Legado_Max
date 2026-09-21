@@ -26,7 +26,7 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         private const val VIEW_TYPE_LIST = 0
         private const val VIEW_TYPE_GRID = 1
         private const val VIEW_TYPE_WATERFALL = 2
-        private const val SPACING_RATIO = 0.05f
+        private const val SPACING_DP = 10
     }
 
     var layoutMode: Int = 0
@@ -126,9 +126,8 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
     }
 
     private fun calcColumnSpacing(): Int {
-        val screenWidth = context.resources.displayMetrics.widthPixels
-        val itemWidth = screenWidth / columnCount.coerceAtLeast(1)
-        return (itemWidth * SPACING_RATIO).toInt().coerceIn(2, 80)
+        val density = context.resources.displayMetrics.density
+        return (SPACING_DP * density).toInt().coerceAtLeast(1)
     }
 
     private fun bindWaterfall(
@@ -176,10 +175,10 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         val lastTag = imageView.tag as? String
         if (lastTag == tagKey) return
         imageView.tag = tagKey
-        imageView.adjustViewBounds = true
+        imageView.adjustViewBounds = false
         val lp = imageView.layoutParams
         lp.width = ViewGroup.LayoutParams.MATCH_PARENT
-        lp.height = ViewGroup.LayoutParams.WRAP_CONTENT
+        lp.height = contentWidth
         imageView.layoutParams = lp
 
         val spacing = calcColumnSpacing()
@@ -196,8 +195,8 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
             item,
             AppConfig.loadCoverOnlyWifi,
             overrideWidth = contentWidth,
-            overrideHeight = contentWidth * 4 / 3,
-            fixedRatio = false
+            overrideHeight = contentWidth,
+            fixedRatio = true
         )
     }
 
