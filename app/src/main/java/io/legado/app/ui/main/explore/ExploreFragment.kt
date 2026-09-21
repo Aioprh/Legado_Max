@@ -1587,6 +1587,13 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
         } else {
             items.indexOfFirst { !it.isButton && !it.kind.url.isNullOrBlank() }
         }
+        // 仅当存在多个可切换标签时才显示胶囊条，只有一个（如"其他"）时隐藏，避免冗余。
+        if (items.size <= 1) {
+            binding.llDiscoverTagsBar.gone()
+            binding.rvDiscoverTags.submitItems(emptyList(), -1)
+            return
+        }
+        binding.llDiscoverTagsBar.visible()
         binding.rvDiscoverTags.submitItems(
             items.map { RoundedTagBarView.Item(it.text, if (it.isButton) 0.9f else 1f, showFullText = true) },
             selectedDiscoverTagIndex
@@ -1596,7 +1603,8 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
 
     private fun renderDiscoverMajorGroups() {
         discoverSelectItems.clear()
-        if (discoverMajorGroups.isEmpty()) {
+        // 仅当存在多个可切换分类时才显示胶囊条，只有一个时隐藏，避免冗余。
+        if (discoverMajorGroups.size <= 1) {
             binding.llDiscoverSelectsBar.gone()
             binding.rvDiscoverSelects.submitItems(emptyList(), -1)
             return
