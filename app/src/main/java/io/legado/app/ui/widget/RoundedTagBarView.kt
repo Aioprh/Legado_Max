@@ -177,8 +177,10 @@ class RoundedTagBarView @JvmOverloads constructor(
             setColor(glassSurface)
             setStroke(1.dp, glassStroke)
         }
-        elevation = 3.dp.toFloat()
-        translationZ = 1.dp.toFloat()
+        // 半透明圆角表面叠加 elevation 阴影，在部分渲染器上会表现为一条细白横线，
+        // 与书架页 SmartTagFilterBar 的处理一致，胶囊不设置 elevation/translationZ。
+        elevation = 0f
+        translationZ = 0f
 
         adapter.normalTextColor = if (isNight) Color.argb(225, 255, 255, 255) else context.primaryTextColor
         adapter.selectedTextColor = Color.WHITE

@@ -1,6 +1,7 @@
 package io.legado.app.ui.widget
 
 import android.content.Context
+import android.text.TextUtils
 import android.util.AttributeSet
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -19,8 +20,8 @@ class LabelsBar @JvmOverloads constructor(
 
     fun setLabels(labels: List<String>, onClick: ((String) -> Unit)? = null, onLongClick: ((String) -> Boolean)? = null) {
         clear()
-        labels.forEach {
-            addLabel(it, onClick, onLongClick)
+        labels.forEachIndexed { index, it ->
+            addLabel(it, onClick, onLongClick, leading = index == 0)
         }
     }
 
@@ -30,7 +31,7 @@ class LabelsBar @JvmOverloads constructor(
         removeAllViews()
     }
 
-    fun addLabel(label: String, onClick: ((String) -> Unit)?, onLongClick: ((String) -> Boolean)?) {
+    fun addLabel(label: String, onClick: ((String) -> Unit)?, onLongClick: ((String) -> Boolean)?, leading: Boolean = false) {
         val tv = if (unUsedViews.isEmpty()) {
             AccentBgTextView(context, null).apply {
                 setPadding(6.dpToPx(), 3.dpToPx(), 6.dpToPx(), 3.dpToPx())
@@ -50,6 +51,11 @@ class LabelsBar @JvmOverloads constructor(
         }
         tv.textSize = textSize
         tv.text = label
+        // 单行省略，避免标签文本过长时被硬裁剪而“缺字”。
+        tv.isSingleLine = true
+        tv.ellipsize = TextUtils.TruncateAt.END
+        // 首个标签通常是字数等元数据，限制其宽度以保证玄幻/仙侠等分类标签完整展示。
+        tv.maxWidth = if (leading) LEADING_LABEL_MAX_WIDTH else Int.MAX_VALUE
         if (onClick != null) {
             tv.setOnClickListener { onClick.invoke(label) }
         }
@@ -57,5 +63,9 @@ class LabelsBar @JvmOverloads constructor(
             tv.setOnLongClickListener { onLongClick.invoke(label) }
         }
         addView(tv)
+    }
+
+    private companion object {
+        val LEADING_LABEL_MAX_WIDTH = 88.dpToPx()
     }
 }
