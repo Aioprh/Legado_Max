@@ -157,7 +157,15 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
 
         binding.tvIntroduceWaterfall.text = item.intro?.trim().orEmpty()
 
-        // 卡片间距与封面宽度：列数 + 间距决定内容宽度
+        // 简介按列数限制行数，行数同时决定信息区高度，保证各卡片等高
+        val introLines = when {
+            columnCount <= 2 -> 7
+            columnCount == 3 -> 5
+            else -> 4
+        }
+        binding.tvIntroduceWaterfall.maxLines = introLines
+
+        val density = context.resources.displayMetrics.density
         val spacing = calcColumnSpacing()
         val contentWidth = (context.resources.displayMetrics.widthPixels / columnCount - spacing).coerceAtLeast(1)
         val halfSpacing = spacing / 2
@@ -168,17 +176,18 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
             height = contentWidth
         }
 
-        // 卡片间距：让列之间留出统一空白
-        (binding.root.layoutParams as? ViewGroup.MarginLayoutParams)?.let {
-            it.setMargins(halfSpacing, halfSpacing, halfSpacing, halfSpacing)
-            binding.root.layoutParams = it
+        // 统一卡片高度：封面 1:1 + 固定信息区高度，消除因简介长短、有无标签/章节
+        // 造成的高矮参差。内部容器 match_parent + 简介约束到底部，内容不足时自动吸附填满。
+        val infoAreaHeight = when {
+            columnCount <= 2 -> 230
+            columnCount == 3 -> 200
+            else -> 185
         }
-
-        // 简介按列数限制最大行数，避免极端情况下卡片高度失控
-        binding.tvIntroduceWaterfall.maxLines = when {
-            columnCount <= 2 -> 7
-            columnCount == 3 -> 5
-            else -> 4
+        binding.root.layoutParams = binding.root.layoutParams.apply {
+            height = contentWidth + (infoAreaHeight * density).toInt()
+            if (this is ViewGroup.MarginLayoutParams) {
+                setMargins(halfSpacing, halfSpacing, halfSpacing, halfSpacing)
+            }
         }
 
         // 防重用错乱：相同数据跳过重复加载
