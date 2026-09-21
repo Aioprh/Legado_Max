@@ -82,6 +82,7 @@ import io.legado.app.ui.widget.menu.SurfacePopupMenu
 import io.legado.app.utils.applyStatusBarPadding
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.dpToPx
+import io.legado.app.utils.cnCompare
 import io.legado.app.utils.flowWithLifecycleAndDatabaseChange
 import io.legado.app.utils.InfoMap
 import io.legado.app.utils.SurfaceBackdrop
@@ -156,7 +157,7 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
     private var discoverBookshelfFlowJob: Job? = null
     private var discoverLoadJob: Job? = null
     private var discoverActionJob: Job? = null
-    private val discoverBooks = mutableListOf<WebBook>()
+    private val discoverBooks = mutableListOf<SearchBook>()
     private val discoverSources = mutableListOf<BookSourcePart>()
     private val discoverAllTagItems = mutableListOf<DiscoverTagItem>()
     private val discoverTagItems = mutableListOf<DiscoverTagItem>()
