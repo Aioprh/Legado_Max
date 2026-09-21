@@ -69,6 +69,7 @@
     <string name="discovery_settings_title">Discovery settings</string>
     <string name="reload_book_source">Reload book source</string>
     <string name="modern_discovery_page">Use modern discovery page</string>
+    <string name="ps_modern_discovery">Use the modern discovery UI (category tabs and book list). Turn off to use the classic book-source list.</string>
     <string name="switch_to_classic_discovery">Switch to discovery list</string>
     <string name="switch_to_modern_discovery">Switch to modern discovery page</string>
     <string name="layout_list">List</string>

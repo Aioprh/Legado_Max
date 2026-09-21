@@ -133,6 +133,14 @@
             android:title="@string/block_rule_manage"
             app:iconSpaceReserved="false" />
 
+        <!-- 新版发现模式：开启后发现页使用分类标签+书籍列表的新版界面，关闭则使用经典书源列表 -->
+        <io.legado.app.lib.prefs.SwitchPreference
+            android:defaultValue="true"
+            android:key="modernDiscoveryPage"
+            android:summary="@string/ps_modern_discovery"
+            android:title="@string/modern_discovery_page"
+            app:iconSpaceReserved="false" />
+
     </io.legado.app.lib.prefs.PreferenceCategory>
 
     <io.legado.app.lib.prefs.PreferenceCategory
