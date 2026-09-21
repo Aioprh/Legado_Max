@@ -421,6 +421,29 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             }
         }
 
+    // 发现页是否使用新版发现模式
+    var modernDiscoveryPage: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.modernDiscoveryPage, true)
+        set(value) {
+            appCtx.putPrefBoolean(PreferKey.modernDiscoveryPage, value)
+        }
+
+    // 新版发现模式下当前选中的书源 URL
+    var modernDiscoverySourceUrl: String?
+        get() = appCtx.getPrefString(PreferKey.modernDiscoverySourceUrl)
+        set(value) {
+            if (value.isNullOrEmpty()) {
+                appCtx.removePref(PreferKey.modernDiscoverySourceUrl)
+            } else {
+                appCtx.putPrefString(PreferKey.modernDiscoverySourceUrl, value)
+            }
+        }
+
+    // 新版发现模式下的书籍布局（0=列表 1=网格 2=瀑布流）
+    var modernDiscoveryLayout: Int
+        get() = appCtx.getPrefInt(PreferKey.modernDiscoveryLayout, 2).coerceIn(0, 2)
+        set(value) = appCtx.putPrefInt(PreferKey.modernDiscoveryLayout, value.coerceIn(0, 2))
+
     var bookExportFileName: String?
         get() = appCtx.getPrefString(PreferKey.bookExportFileName)
         set(value) {

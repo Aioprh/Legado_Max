@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.viewbinding.ViewBinding
 import io.legado.app.R
 import io.legado.app.help.config.AppConfig
 import io.legado.app.ui.widget.TitleBar
@@ -72,4 +73,39 @@ fun EditText.applyUiInputStyle(context: Context, minLines: Int = 1) {
     val horizontal = 12.dpToPx()
     val vertical = if (minLines > 1) 10.dpToPx() else 8.dpToPx()
     setPadding(horizontal, vertical, horizontal, vertical)
+}
+
+/** 应用正文字体（递归设置整个 View 树） */
+fun View.applyUiBodyTypeface(context: Context) {
+    applyUiBodyTypefaceDeep(context.uiTypeface())
+}
+
+/** 应用正文字体（ViewBinding 版本） */
+fun <VB : ViewBinding> VB.applyUiBodyTypeface(context: Context): VB {
+    root.applyUiBodyTypeface(context)
+    return this
+}
+
+/** 应用标题字体：标记为标题角色，后续递归设置正文时会跳过 */
+fun TextView.applyUiTitleTypeface(context: Context) {
+    setTag(R.id.ui_title_typeface_role, true)
+    typeface = context.uiTypeface()
+}
+
+/** 应用菜单项字体 */
+fun TextView.applyUiMenuItemTypeface(context: Context) {
+    setTag(R.id.ui_title_typeface_role, false)
+    typeface = context.uiTypeface()
+}
+
+/** 递归应用菜单项字体 */
+fun View.applyUiMenuTypefaceDeep(context: Context) {
+    when (this) {
+        is TextView -> applyUiMenuItemTypeface(context)
+        is ViewGroup -> {
+            for (index in 0 until childCount) {
+                getChildAt(index).applyUiMenuTypefaceDeep(context)
+            }
+        }
+    }
 }

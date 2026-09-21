@@ -98,7 +98,26 @@ inline fun Menu.transaction(block: (Menu) -> Unit) {
     }
 }
 
+/** 应用新版发现模式等自定义菜单的字体与色调（简化实现）。 */
+@SuppressLint("RestrictedApi")
+fun Menu.applyUiMenuStyle(context: Context, theme: Theme = Theme.Auto): Menu {
+    applyTint(context, theme)
+    return this
+}
+
 object MenuExtensions {
+
+    /** 应用新版发现模式等自定义菜单的字体与色调（简化实现）。 */
+    @SuppressLint("RestrictedApi")
+    fun Menu.applyUiMenuStyle(context: Context, theme: Theme = Theme.Auto): Menu {
+        applyTint(context, theme)
+        return this
+    }
+
+    fun makeMenuStyle(
+        context: Context,
+        theme: Theme = Theme.Auto
+    ): (Menu) -> Menu = { menu -> menu.applyUiMenuStyle(context, theme) }
 
     fun getMenuColor(
         context: Context,

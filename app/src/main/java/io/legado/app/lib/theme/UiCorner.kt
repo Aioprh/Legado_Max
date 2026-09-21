@@ -72,6 +72,61 @@ object UiCorner {
         }
     }
 
+    // ── 新版发现模式适配（legadoC 移植） ──
+    // 以下方法映射到本项目现有主题体系，不引入 legadoC 的透明度/模糊系统。
+
+    /** 常规表面色（本项目无全局透明度，原样返回） */
+    fun surfaceColor(color: Int, pressed: Boolean = false): Int = color
+
+    /** 弹窗表面色（本项目无弹窗透明度，原样返回） */
+    fun dialogSurfaceColor(color: Int): Int = color
+
+    /** 弹窗/菜单使用的小圆角 */
+    fun compactSurfaceRadius(context: Context): Float {
+        return panelRadius(context)
+    }
+
+    /** 搜索框圆角 */
+    fun searchRadius(value: Float): Float = value.dpToPx()
+
+    /** 主题标签条底色 */
+    fun themeSurfaceTagBarColor(context: Context): Int {
+        return androidx.core.content.ContextCompat.getColor(context, R.color.background_card)
+    }
+
+    /** 主题标签选中色 */
+    fun themeSurfaceTagSelectedColor(context: Context): Int {
+        return androidx.core.content.ContextCompat.getColor(context, R.color.background_card)
+    }
+
+    /** 主题标签底色 */
+    fun themeSurfaceTabColor(context: Context): Int {
+        return androidx.core.content.ContextCompat.getColor(context, R.color.background_card)
+    }
+
+    /** 主题弱化表面色（菜单/浮层） */
+    fun themeSurfaceMutedColor(context: Context): Int {
+        return androidx.core.content.ContextCompat.getColor(context, R.color.background_menu)
+    }
+
+    /** 主题弹窗表面色 */
+    fun themeSurfaceDialogColor(context: Context): Int {
+        return androidx.core.content.ContextCompat.getColor(context, R.color.dialog_surface)
+    }
+
+    /** 主题面板描边色（本项目无主题描边体系，返回 null） */
+    fun themePanelBorderColor(context: Context): Int? = null
+
+    /** 弹窗内按钮按压/选中状态选择器 */
+    fun dialogActionSelector(defaultColor: Int, pressedColor: Int, radius: Float): StateListDrawable {
+        return actionSelector(defaultColor, pressedColor, radius)
+    }
+
+    /** 轻量按压/选中状态选择器（默认态使用半透明圆角） */
+    fun softActionSelector(defaultColor: Int, pressedColor: Int, radius: Float): StateListDrawable {
+        return actionSelector(defaultColor, pressedColor, radius)
+    }
+
     private fun panelStrokeColor(color: Int): Int {
         val base = if (ColorUtils.calculateLuminance(color) > 0.5) Color.BLACK else Color.WHITE
         return ColorUtils.setAlphaComponent(base, (0.10f * 255).toInt())

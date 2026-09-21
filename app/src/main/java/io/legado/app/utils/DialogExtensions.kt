@@ -17,7 +17,21 @@ import io.legado.app.lib.theme.Selector
 import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.filletBackground
+import io.legado.app.lib.theme.surface.SurfaceStyle
+import io.legado.app.lib.theme.surface.SurfaceStyles
 import splitties.systemservices.windowManager
+
+/**
+ * 对新版发现模式等自定义弹窗应用一致的对话框表面。
+ * 本项目无模糊，把它映射为静态圆角背景。
+ */
+fun Dialog.applyAdaptiveDim(
+    surface: View,
+    style: SurfaceStyle = SurfaceStyles.dialog(context)
+) {
+    // 弹窗窗口本身已是圆角背景，这里把传入的表面画成同款圆角底。
+    SurfaceBackdrop.installStatic(surface, style)
+}
 
 fun AlertDialog.applyTint(): AlertDialog {
     window?.setBackgroundDrawable(context.filletBackground)
