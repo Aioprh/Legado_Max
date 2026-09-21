@@ -221,8 +221,14 @@ class RoundedTagBarView @JvmOverloads constructor(
             setSelectedIndex(selectedIndex, smooth = false)
             return
         }
-        this.items = items.filter { it.text.toString().trim().isNotEmpty() }
-        this.selectedIndex = normalizeIndex(selectedIndex)
+        val filteredItems = items.filter { it.text.toString().trim().isNotEmpty() }
+        val filteredSelectedIndex = if (selectedIndex in items.indices && items[selectedIndex].text.toString().trim().isNotEmpty()) {
+            items.take(selectedIndex + 1).count { it.text.toString().trim().isNotEmpty() } - 1
+        } else {
+            RecyclerView.NO_POSITION
+        }
+        this.items = filteredItems
+        this.selectedIndex = normalizeIndex(filteredSelectedIndex)
         applyTopBarStyle(force = true)
         adapter.notifyDataSetChanged()
         recyclerView.post { centerItemsIfFits() }
