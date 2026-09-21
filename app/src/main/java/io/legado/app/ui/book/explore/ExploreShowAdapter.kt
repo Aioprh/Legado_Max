@@ -121,7 +121,8 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         val halfSpacing = spacing / 2
         holder.itemView.setPadding(halfSpacing, halfSpacing, halfSpacing, halfSpacing)
         val contentWidth = context.resources.displayMetrics.widthPixels / columnCount
-        binding.ivCoverGrid.load(item, AppConfig.loadCoverOnlyWifi, overrideWidth = contentWidth, overrideHeight = contentWidth * 4 / 3)
+        val coverHeight = (contentWidth * 1.25f).toInt()
+        binding.ivCoverGrid.load(item, AppConfig.loadCoverOnlyWifi, overrideWidth = contentWidth, overrideHeight = coverHeight)
         binding.tvNameGrid.text = item.name
     }
 
