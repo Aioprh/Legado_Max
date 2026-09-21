@@ -1,73 +1,84 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/bg_modern_discovery_card"
-    android:clipToOutline="true"
-    android:paddingBottom="7dp">
+    android:layout_margin="4dp"
+    android:foreground="?attr/selectableItemBackground"
+    app:cardBackgroundColor="@android:color/transparent"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="2dp"
+    app:cardUseCompatPadding="false">
 
-    <io.legado.app.ui.widget.image.CoverImageView
-        android:id="@+id/iv_cover_grid"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:contentDescription="@string/img_cover"
-        android:scaleType="centerCrop"
-        android:src="@drawable/image_cover_default"
-        app:layout_constraintDimensionRatio="1:1"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_modern_discovery_card"
+        android:clipToOutline="true"
+        android:paddingBottom="8dp">
 
-    <ImageView
-        android:id="@+id/iv_in_bookshelf_grid"
-        android:layout_width="22dp"
-        android:layout_height="22dp"
-        android:layout_marginEnd="6dp"
-        android:layout_marginTop="6dp"
-        android:background="@drawable/bg_shelf_icon"
-        android:backgroundTint="?android:attr/colorBackground"
-        android:padding="3dp"
-        android:scaleType="centerInside"
-        android:src="@drawable/ic_check"
-        android:tint="?android:attr/textColorPrimary"
-        android:visibility="invisible"
-        app:layout_constraintRight_toRightOf="@id/iv_cover_grid"
-        app:layout_constraintTop_toTopOf="@id/iv_cover_grid" />
-
-    <LinearLayout
-        android:id="@+id/ll_name_container_grid"
-        android:layout_width="0dp"
-        android:layout_height="40dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="7dp"
-        android:layout_marginEnd="8dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/iv_cover_grid">
-
-        <io.legado.app.ui.widget.image.CircleImageView
-            android:id="@+id/iv_in_bookshelf_dot_grid"
-            android:layout_width="6dp"
-            android:layout_height="6dp"
-            android:layout_marginEnd="4dp"
-            android:scaleType="centerCrop"
-            android:src="@color/md_green_600"
-            android:visibility="gone" />
-
-        <TextView
-            android:id="@+id/tv_name_grid"
+        <io.legado.app.ui.widget.image.CoverImageView
+            android:id="@+id/iv_cover_grid"
             android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:ellipsize="end"
-            android:gravity="start|center_vertical"
-            android:maxLines="2"
-            android:textColor="@color/primaryText"
-            android:textSize="13sp"
-            android:textStyle="bold" />
-    </LinearLayout>
+            android:layout_height="0dp"
+            android:contentDescription="@string/img_cover"
+            android:scaleType="centerCrop"
+            android:src="@drawable/image_cover_default"
+            app:layout_constraintDimensionRatio="1:1"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+        <ImageView
+            android:id="@+id/iv_in_bookshelf_grid"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_marginEnd="6dp"
+            android:layout_marginTop="6dp"
+            android:background="@drawable/bg_shelf_icon"
+            android:backgroundTint="?android:attr/colorBackground"
+            android:padding="3dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_check"
+            android:tint="?android:attr/textColorPrimary"
+            android:visibility="invisible"
+            app:layout_constraintEnd_toEndOf="@id/iv_cover_grid"
+            app:layout_constraintTop_toTopOf="@id/iv_cover_grid" />
+
+        <LinearLayout
+            android:id="@+id/ll_name_container_grid"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="9dp"
+            android:layout_marginTop="7dp"
+            android:layout_marginEnd="9dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/iv_cover_grid">
+
+            <io.legado.app.ui.widget.image.CircleImageView
+                android:id="@+id/iv_in_bookshelf_dot_grid"
+                android:layout_width="6dp"
+                android:layout_height="6dp"
+                android:layout_marginEnd="5dp"
+                android:scaleType="centerCrop"
+                android:src="@color/md_green_600"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tv_name_grid"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:gravity="start|center_vertical"
+                android:maxLines="2"
+                android:textColor="@color/primaryText"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.cardview.widget.CardView>
