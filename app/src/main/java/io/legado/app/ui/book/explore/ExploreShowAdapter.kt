@@ -110,9 +110,9 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         binding: ItemExploreShowGridBinding,
         item: SearchBook
     ) {
-        val shelfState = callBack.getBookShelfState(item)
-        binding.ivInBookshelfGrid.setShelfState(shelfState)
-        binding.ivInBookshelfDotGrid.setShelfStateDot(shelfState)
+        // 新版发现页不显示书架状态角标，避免封面右上角出现白色方块。
+        binding.ivInBookshelfGrid.isVisible = false
+        binding.ivInBookshelfDotGrid.isVisible = false
         val tagKey = "${item.bookUrl}_$columnCount"
         val lastItemTag = holder.itemView.tag as? String
         if (lastItemTag == tagKey) return
@@ -134,9 +134,9 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         binding: ItemExploreShowWaterfallBinding,
         item: SearchBook
     ) {
-        val shelfState = callBack.getBookShelfState(item)
-        binding.ivInBookshelfWaterfall.setShelfState(shelfState)
-        binding.ivInBookshelfDotWaterfall.setShelfStateDot(shelfState)
+        // 新版发现页不显示书架状态角标，避免封面右上角出现白色方块。
+        binding.ivInBookshelfWaterfall.isVisible = false
+        binding.ivInBookshelfDotWaterfall.isVisible = false
         binding.tvNameWaterfall.text = item.name
         binding.tvAuthorWaterfall.text = item.author
 
