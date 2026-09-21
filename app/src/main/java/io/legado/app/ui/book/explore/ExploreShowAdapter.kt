@@ -156,18 +156,21 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         }
 
         binding.tvIntroduceWaterfall.text = item.intro?.trim().orEmpty()
-        // 根据卡片实际宽度动态计算简介最大行数（基于密度比例）
-        binding.tvIntroduceWaterfall.maxLines = if (columnCount <= 3) {
-            10
-        } else {
-            // 以360dp宽度为基准，计算相对比例
-            val density = context.resources.displayMetrics.density
-            val screenWidthPx = context.resources.displayMetrics.widthPixels
-            val spacing = calcColumnSpacing()
-            val itemWidthDp = (screenWidthPx / columnCount - spacing) / density
-            // 基准宽度360dp时显示4行，按比例调整
-            val baseWidthDp = 360f
-            maxOf(1, (itemWidthDp / baseWidthDp * 4).toInt().coerceIn(1, 6))
+
+        // 统一瀑布流卡片高度，避免简介长短不同造成三列卡片参差不齐。
+        val density = context.resources.displayMetrics.density
+        val spacing = calcColumnSpacing()
+        val contentWidth = (context.resources.displayMetrics.widthPixels / columnCount - spacing).coerceAtLeast(1)
+        val contentAreaHeight = (210 * density).toInt()
+        binding.root.layoutParams = binding.root.layoutParams.apply {
+            height = contentWidth + contentAreaHeight
+        }
+
+        // 固定简介可见行数，超出部分省略，确保所有卡片保持相同高度。
+        binding.tvIntroduceWaterfall.maxLines = when {
+            columnCount <= 2 -> 7
+            columnCount == 3 -> 5
+            else -> 4
         }
 
         val imageView = binding.ivCoverWaterfall
@@ -175,9 +178,7 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         val lastTag = imageView.tag as? String
         if (lastTag == tagKey) return
         imageView.tag = tagKey
-        val spacing = calcColumnSpacing()
         val halfSpacing = spacing / 2
-        val contentWidth = context.resources.displayMetrics.widthPixels / columnCount - spacing
 
         imageView.adjustViewBounds = false
         val lp = imageView.layoutParams
