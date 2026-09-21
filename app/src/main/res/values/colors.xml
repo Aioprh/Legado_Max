@@ -15,6 +15,10 @@
     <color name="background_menu">@color/md_grey_200</color>
     <color name="dialog_surface">#FFFFFFFF</color>
     <color name="background_prefs">#7fffffff</color>
+    <color name="glass_bar_pressed">#C0DCEAF4</color>
+    <color name="glass_bar_focused">#B5D6E6F2</color>
+    <color name="glass_stroke_strong">#8090AFC8</color>
+    <color name="card_bg_water_pressed">#82F8FCFF</color>
     <color name="glass_bar">#A8D9E6F7</color>
     <color name="glass_bar_shadow">#260A1D35</color>
     <color name="glass_bar_highlight">#52FFFFFF</color>
