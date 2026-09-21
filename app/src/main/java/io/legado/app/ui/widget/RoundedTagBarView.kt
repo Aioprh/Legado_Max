@@ -118,8 +118,10 @@ class RoundedTagBarView @JvmOverloads constructor(
             LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT).apply {
                 leftMargin = 3.dp
                 rightMargin = 3.dp
-                topMargin = 2.dp
-                bottomMargin = 2.dp
+                // 让小胶囊在大胶囊内部真正垂直居中：
+                // 28dp 标签 + 2dp 上下 margin = 32dp，44dp 外框中上下各留 6dp。
+                topMargin = 6.dp
+                bottomMargin = 6.dp
             }
         )
     }
@@ -214,6 +216,7 @@ class RoundedTagBarView @JvmOverloads constructor(
         this.items = items.toList()
         this.selectedIndex = normalizeIndex(selectedIndex)
         adapter.notifyDataSetChanged()
+        recyclerView.post { centerItemsIfFits() }
         if (this.selectedIndex != RecyclerView.NO_POSITION) {
             scrollToIndex(this.selectedIndex, smooth = false)
         }
@@ -232,6 +235,7 @@ class RoundedTagBarView @JvmOverloads constructor(
         if (oldIndex in items.indices) adapter.notifyItemChanged(oldIndex)
         if (newIndex != RecyclerView.NO_POSITION) {
             adapter.notifyItemChanged(newIndex)
+            recyclerView.post { centerItemsIfFits() }
             scrollToIndex(newIndex, smooth)
         }
     }
@@ -267,7 +271,44 @@ class RoundedTagBarView @JvmOverloads constructor(
         centerChild(child.left, child.width, smooth)
     }
 
+    /**
+     * 当所有标签都能放进大胶囊时，把整组小胶囊水平居中；
+     * 标签超过一行可用宽度时恢复正常横向滚动，避免影响滑动体验。
+     */
+    private fun centerItemsIfFits() {
+        recyclerView.post {
+            if (recyclerView.width <= 0 || adapter.itemCount == 0) return@post
+
+            var contentLeft = Int.MAX_VALUE
+            var contentRight = Int.MIN_VALUE
+            var visibleCount = 0
+            for (i in 0 until layoutManager.childCount) {
+                val child = layoutManager.getChildAt(i) ?: continue
+                contentLeft = minOf(contentLeft, layoutManager.getDecoratedLeft(child))
+                contentRight = maxOf(contentRight, layoutManager.getDecoratedRight(child))
+                visibleCount++
+            }
+
+            if (visibleCount == adapter.itemCount && contentLeft != Int.MAX_VALUE) {
+                val contentWidth = contentRight - contentLeft
+                val availableWidth = recyclerView.width - recyclerView.paddingLeft - recyclerView.paddingRight
+                val extra = availableWidth - contentWidth
+                val targetPadding = if (extra > 0) extra / 2 else 0
+                if (recyclerView.paddingLeft != targetPadding || recyclerView.paddingRight != targetPadding) {
+                    recyclerView.setPadding(targetPadding, recyclerView.paddingTop, targetPadding, recyclerView.paddingBottom)
+                }
+            } else if (recyclerView.paddingLeft != 0 || recyclerView.paddingRight != 0) {
+                recyclerView.setPadding(0, recyclerView.paddingTop, 0, recyclerView.paddingBottom)
+            }
+        }
+    }
+
     private fun centerChild(childLeft: Int, childWidth: Int, smooth: Boolean) {
+        // 内容全部可见时已经整体居中，不再滚动单个标签。
+        if (layoutManager.childCount == adapter.itemCount && adapter.itemCount > 0) {
+            centerItemsIfFits()
+            return
+        }
         val dx = childLeft - (recyclerView.width - childWidth) / 2
         if (dx == 0) return
         if (smooth) recyclerView.smoothScrollBy(dx, 0) else recyclerView.scrollBy(dx, 0)
