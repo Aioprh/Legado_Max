@@ -129,9 +129,9 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
 
         // 简介按列数限制行数，行数同时决定信息区高度，保证各卡片等高
         val introLines = when {
-            columnCount <= 2 -> 7
-            columnCount == 3 -> 5
-            else -> 4
+            columnCount <= 2 -> 1
+            columnCount == 3 -> 1
+            else -> 1
         }
         binding.tvIntroduceGrid.maxLines = introLines
 
@@ -142,9 +142,9 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
 
         // 统一卡片高度：封面 1:1 + 固定信息区高度，消除因简介长短、有无标签造成的高矮参差。
         val infoAreaHeight = when {
-            columnCount <= 2 -> 230
-            columnCount == 3 -> 200
-            else -> 185
+            columnCount <= 2 -> 130
+            columnCount == 3 -> 130
+            else -> 130
         }
         binding.root.layoutParams = binding.root.layoutParams.apply {
             height = contentWidth + (infoAreaHeight * density).toInt()
@@ -196,9 +196,9 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
 
         // 简介按列数限制行数，行数同时决定信息区高度，保证各卡片等高
         val introLines = when {
-            columnCount <= 2 -> 7
-            columnCount == 3 -> 5
-            else -> 4
+            columnCount <= 2 -> 1
+            columnCount == 3 -> 1
+            else -> 1
         }
         binding.tvIntroduceWaterfall.maxLines = introLines
 
@@ -216,9 +216,9 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         // 统一卡片高度：封面 1:1 + 固定信息区高度，消除因简介长短、有无标签/章节
         // 造成的高矮参差。内部容器 match_parent + 简介约束到底部，内容不足时自动吸附填满。
         val infoAreaHeight = when {
-            columnCount <= 2 -> 230
-            columnCount == 3 -> 200
-            else -> 185
+            columnCount <= 2 -> 130
+            columnCount == 3 -> 130
+            else -> 130
         }
         binding.root.layoutParams = binding.root.layoutParams.apply {
             height = contentWidth + (infoAreaHeight * density).toInt()
