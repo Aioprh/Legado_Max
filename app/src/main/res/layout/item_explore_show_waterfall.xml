@@ -106,7 +106,7 @@
             app:layout_constraintTop_toBottomOf="@id/tv_author_waterfall" />
 
         <TextView
-            android:id="@+id/tv_lasted_waterfall"
+            android:id="@+id/tv_word_count_waterfall"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="3dp"
@@ -119,6 +119,21 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/ll_kind_waterfall" />
+
+        <TextView
+            android:id="@+id/tv_lasted_waterfall"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:ellipsize="end"
+            android:lines="1"
+            android:textColor="@color/secondaryText"
+            android:textSize="11sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tv_word_count_waterfall" />
 
         <TextView
             android:id="@+id/tv_introduce_waterfall"

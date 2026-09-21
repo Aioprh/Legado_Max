@@ -17,6 +17,7 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.help.glide.CoverLoader
 import io.legado.app.ui.widget.image.CircleImageView
 import io.legado.app.utils.gone
+import io.legado.app.utils.splitNotBlank
 import io.legado.app.utils.visible
 
 class ExploreShowAdapter(context: Context, val callBack: CallBack) :
@@ -117,12 +118,22 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         binding.tvNameGrid.text = item.name
         binding.tvAuthorGrid.text = item.author
 
-        val kinds = item.getKindList()
-        if (kinds.isEmpty()) {
+        // 分类标签（不含字数）
+        val kindTags = item.kind?.splitNotBlank(",", "\n").orEmpty()
+        if (kindTags.isEmpty()) {
             binding.llKindGrid.gone()
         } else {
             binding.llKindGrid.visible()
-            binding.llKindGrid.setLabels(kinds)
+            binding.llKindGrid.setLabels(kindTags.toList())
+        }
+
+        // 字数，放在分类标签下方
+        val wordCount = item.wordCount?.takeIf { it.isNotBlank() }
+        if (wordCount.isNullOrBlank()) {
+            binding.tvWordCountGrid.gone()
+        } else {
+            binding.tvWordCountGrid.visible()
+            binding.tvWordCountGrid.text = wordCount
         }
 
         binding.tvIntroduceGrid.text = item.intro?.trim().orEmpty()
@@ -140,11 +151,12 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         val contentWidth = (context.resources.displayMetrics.widthPixels / columnCount - spacing).coerceAtLeast(1)
         val halfSpacing = spacing / 2
 
-        // 统一卡片高度：封面 1:1 + 固定信息区高度，消除因简介长短、有无标签造成的高矮参差。
+        // 统一卡片高度：封面 1:1 + 固定信息区高度，消除因简介长短、有无标签/字数造成的高矮参差。
+        // 信息区包含：书名、作者、分类标签、字数、简介，新增字数行后高度相应增加。
         val infoAreaHeight = when {
-            columnCount <= 2 -> 130
-            columnCount == 3 -> 130
-            else -> 130
+            columnCount <= 2 -> 150
+            columnCount == 3 -> 150
+            else -> 150
         }
         binding.root.layoutParams = binding.root.layoutParams.apply {
             height = contentWidth + (infoAreaHeight * density).toInt()
@@ -177,12 +189,22 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         binding.tvNameWaterfall.text = item.name
         binding.tvAuthorWaterfall.text = item.author
 
-        val kinds = item.getKindList()
-        if (kinds.isEmpty()) {
+        // 分类标签（不含字数）
+        val kindTags = item.kind?.splitNotBlank(",", "\n").orEmpty()
+        if (kindTags.isEmpty()) {
             binding.llKindWaterfall.gone()
         } else {
             binding.llKindWaterfall.visible()
-            binding.llKindWaterfall.setLabels(kinds)
+            binding.llKindWaterfall.setLabels(kindTags.toList())
+        }
+
+        // 字数，放在分类标签下方
+        val wordCount = item.wordCount?.takeIf { it.isNotBlank() }
+        if (wordCount.isNullOrBlank()) {
+            binding.tvWordCountWaterfall.gone()
+        } else {
+            binding.tvWordCountWaterfall.visible()
+            binding.tvWordCountWaterfall.text = wordCount
         }
 
         if (item.latestChapterTitle.isNullOrEmpty()) {
@@ -213,12 +235,12 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
             height = contentWidth
         }
 
-        // 统一卡片高度：封面 1:1 + 固定信息区高度，消除因简介长短、有无标签/章节
+        // 统一卡片高度：封面 1:1 + 固定信息区高度，消除因简介长短、有无标签/字数/章节
         // 造成的高矮参差。内部容器 match_parent + 简介约束到底部，内容不足时自动吸附填满。
         val infoAreaHeight = when {
-            columnCount <= 2 -> 130
-            columnCount == 3 -> 130
-            else -> 130
+            columnCount <= 2 -> 165
+            columnCount == 3 -> 165
+            else -> 165
         }
         binding.root.layoutParams = binding.root.layoutParams.apply {
             height = contentWidth + (infoAreaHeight * density).toInt()
@@ -277,12 +299,21 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
                 tvLasted.visible()
             }
             tvIntroduce.text = item.trimIntro(context)
-            val kinds = item.getKindList()
-            if (kinds.isEmpty()) {
+            // 分类标签（不含字数）
+            val kindTags = item.kind?.splitNotBlank(",", "\n").orEmpty()
+            if (kindTags.isEmpty()) {
                 llKind.gone()
             } else {
                 llKind.visible()
-                llKind.setLabels(kinds)
+                llKind.setLabels(kindTags.toList())
+            }
+            // 字数，放在分类标签下方
+            val wordCount = item.wordCount?.takeIf { it.isNotBlank() }
+            if (wordCount.isNullOrBlank()) {
+                tvWordCount.gone()
+            } else {
+                tvWordCount.visible()
+                tvWordCount.text = wordCount
             }
             ivCover.load(
                 item,

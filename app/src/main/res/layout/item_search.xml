@@ -118,6 +118,16 @@
             android:orientation="horizontal" />
 
         <TextView
+            android:id="@+id/tv_word_count"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:textColor="@color/secondaryText"
+            android:textSize="12sp" />
+
+        <TextView
             android:id="@+id/tv_lasted"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

@@ -16,6 +16,7 @@ import io.legado.app.ui.book.explore.setShelfState
 import io.legado.app.ui.book.explore.setShelfStateDot
 import io.legado.app.ui.widget.image.CircleImageView
 import io.legado.app.utils.gone
+import io.legado.app.utils.splitNotBlank
 import io.legado.app.utils.visible
 
 
@@ -104,7 +105,7 @@ class SearchAdapter(context: Context, val callBack: CallBack) :
             }
             upLasted(binding, searchBook.latestChapterTitle)
             tvIntroduce.text = searchBook.trimIntro(context)
-            upKind(binding, searchBook.getKindList())
+            upKind(binding, searchBook)
             ivCover.load(
                 searchBook,
                 AppConfig.loadCoverOnlyWifi
@@ -119,7 +120,7 @@ class SearchAdapter(context: Context, val callBack: CallBack) :
                     "origins" -> bvOriginCount.setBadgeCount(searchBook.origins.size)
                     "last" -> upLasted(binding, searchBook.latestChapterTitle)
                     "intro" -> tvIntroduce.text = searchBook.trimIntro(context)
-                    "kind" -> upKind(binding, searchBook.getKindList())
+                    "kind" -> upKind(binding, searchBook)
                     "isInBookshelf" -> {
                         val shelfState = callBack.getBookShelfState(searchBook)
                         ivInBookshelf.setShelfState(shelfState)
@@ -146,12 +147,22 @@ class SearchAdapter(context: Context, val callBack: CallBack) :
         }
     }
 
-    private fun upKind(binding: ItemSearchBinding, kinds: List<String>) = binding.run {
-        if (kinds.isEmpty()) {
+    private fun upKind(binding: ItemSearchBinding, book: SearchBook) = binding.run {
+        // 分类标签（不含字数）
+        val kindTags = book.kind?.splitNotBlank(",", "\n").orEmpty()
+        if (kindTags.isEmpty()) {
             llKind.gone()
         } else {
             llKind.visible()
-            llKind.setLabels(kinds)
+            llKind.setLabels(kindTags.toList())
+        }
+        // 字数，放在分类标签下方
+        val wordCount = book.wordCount?.takeIf { it.isNotBlank() }
+        if (wordCount.isNullOrBlank()) {
+            tvWordCount.gone()
+        } else {
+            tvWordCount.visible()
+            tvWordCount.text = wordCount
         }
     }
 
