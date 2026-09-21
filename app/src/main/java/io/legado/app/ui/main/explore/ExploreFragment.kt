@@ -1611,7 +1611,7 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
         if (discoverTagItems.size < ExpandableTagSelector.EXPAND_THRESHOLD) return
         ExpandableTagSelector.show(
             context = requireContext(),
-            title = getString(R.string.select),
+            title = getString(R.string.modern_discovery_select),
             items = discoverTagItems.mapIndexed { index, item ->
                 ExpandableTagSelector.GridItem(
                     text = item.text,
