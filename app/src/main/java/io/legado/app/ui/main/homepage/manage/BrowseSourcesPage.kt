@@ -197,25 +197,20 @@ fun BrowseSourcesPage(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 12.dp),
+                                // 条目高度随内容自适应，保持紧凑的单行书源布局
+                                .padding(horizontal = 16.dp, vertical = 9.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // 书源名称和模块数量
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = source.sourceName,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Text(
-                                    text = stringResource(R.string.homepage_module_count, source.moduleCount),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = pageSecondaryTextColor()
-                                )
-                            }
+                            // 书源名称
+                            Text(
+                                text = source.sourceName,
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                             // 右侧箭头图标
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
