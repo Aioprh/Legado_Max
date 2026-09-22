@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -191,14 +192,16 @@ fun BrowseSourcesPage(
             ) {
                 items(filteredSources) { source ->
                     GlassCard(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 52.dp, max = 72.dp),
                         onClick = { onSourceClick(source.sourceUrl) }
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                // 条目高度随内容自适应，保持紧凑的单行书源布局
-                                .padding(horizontal = 16.dp, vertical = 9.dp),
+                                // 紧凑自适应：单行名称按内容决定高度，不再占用大块固定空间
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             // 书源名称
