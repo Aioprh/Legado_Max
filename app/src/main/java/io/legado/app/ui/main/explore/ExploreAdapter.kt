@@ -170,11 +170,8 @@ class ExploreAdapter(context: Context, val callBack: CallBack) :
     ) {
         binding.run {
             // 设置最后一项的底部内边距
-            if (holder.layoutPosition == itemCount - 1) {
-                root.setPadding(16.dpToPx(), 12.dpToPx(), 16.dpToPx(), 12.dpToPx())
-            } else {
-                root.setPadding(16.dpToPx(), 12.dpToPx(), 16.dpToPx(), 0)
-            }
+            // 发现源卡片高度完全由标题内容和控件自身尺寸决定，避免额外根布局内边距撑高卡片。
+            root.setPadding(0, 0, 0, 0)
             // 只在完整刷新时更新书源名称
             if (payloads.isEmpty()) {
                 tvName.text = item.bookSourceName
