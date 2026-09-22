@@ -20,10 +20,8 @@ class LabelsBar @JvmOverloads constructor(
 
     fun setLabels(labels: List<String>, onClick: ((String) -> Unit)? = null, onLongClick: ((String) -> Boolean)? = null) {
         clear()
-        // 仅当存在后续标签时，才让首个标签（字数等元数据）弹性收缩，保证分类标签完整展示。
-        val leadingExpand = labels.size > 1
-        labels.forEachIndexed { index, it ->
-            addLabel(it, onClick, onLongClick, expand = index == 0 && leadingExpand)
+        labels.forEach {
+            addLabel(it, onClick, onLongClick)
         }
     }
 
@@ -33,7 +31,7 @@ class LabelsBar @JvmOverloads constructor(
         removeAllViews()
     }
 
-    fun addLabel(label: String, onClick: ((String) -> Unit)?, onLongClick: ((String) -> Boolean)?, expand: Boolean = false) {
+    fun addLabel(label: String, onClick: ((String) -> Unit)?, onLongClick: ((String) -> Boolean)?) {
         val tv = if (unUsedViews.isEmpty()) {
             AccentBgTextView(context, null).apply {
                 setPadding(6.dpToPx(), 3.dpToPx(), 6.dpToPx(), 3.dpToPx())
@@ -50,22 +48,15 @@ class LabelsBar @JvmOverloads constructor(
         }
         tv.textSize = textSize
         tv.text = label
-        // 单行省略，避免标签文本过长时被硬裁剪而“缺字”。
+        // 单行省略，避免标签文本过长时被硬裁剪而"缺字"。
         tv.isSingleLine = true
         tv.ellipsize = TextUtils.TruncateAt.END
         tv.maxWidth = Int.MAX_VALUE
-        // 首标签需要弹性收缩：width=0、weight=1，占据剩余空间并省略；其余标签 wrap_content 完整显示。
+        // 所有标签均 wrap_content，按内容自适应宽度。
         val lp = (tv.layoutParams as? LayoutParams) ?: LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
-        if (expand) {
-            if (lp.width != 0 || lp.weight != 1f) {
-                lp.width = 0
-                lp.weight = 1f
-            }
-        } else {
-            if (lp.width != LayoutParams.WRAP_CONTENT || lp.weight != 0f) {
-                lp.width = LayoutParams.WRAP_CONTENT
-                lp.weight = 0f
-            }
+        if (lp.width != LayoutParams.WRAP_CONTENT || lp.weight != 0f) {
+            lp.width = LayoutParams.WRAP_CONTENT
+            lp.weight = 0f
         }
         lp.setMargins(0, 0, 4.dpToPx(), 0)
         tv.layoutParams = lp
