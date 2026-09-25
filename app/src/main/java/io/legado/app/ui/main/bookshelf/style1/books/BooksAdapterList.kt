@@ -18,7 +18,6 @@ import io.legado.app.help.book.SmartTag
 import io.legado.app.help.book.SmartTagConfig
 import io.legado.app.help.book.isAudio
 import io.legado.app.help.config.AppConfig
-import io.legado.app.lib.theme.bookBorderBackground
 import io.legado.app.model.AudioPlay
 import io.legado.app.service.AudioPlayService
 import io.legado.app.utils.dpToPx
@@ -50,15 +49,11 @@ class BooksAdapterList(
         payloads: MutableList<Any>
     ) = binding.run {
         if (payloads.isEmpty()) {
-            if (AppConfig.showBookBorder) {
-                root.background = context.bookBorderBackground
-                (root.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(
-                    4.dpToPx(), 4.dpToPx(), 4.dpToPx(), 4.dpToPx()
-                )
-            } else {
-                root.background = null
-                (root.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(0, 0, 0, 0)
-            }
+            // 书架列表统一采用独立的圆角卡片样式，不再受“显示书籍边框”开关影响。
+            root.setBackgroundResource(R.drawable.bookshelf_list_card_background)
+            (root.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(
+                6.dpToPx(), 6.dpToPx(), 6.dpToPx(), 6.dpToPx()
+            )
             tvName.text = item.name
             tvAuthor.text = item.author
             tvRead.text = item.durChapterTitle
