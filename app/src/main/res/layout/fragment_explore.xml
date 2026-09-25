@@ -18,6 +18,7 @@
         android:id="@+id/swipe_refresh_layout"
         android:layout_width="0dp"
         android:layout_height="0dp"
+        android:background="@android:color/transparent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -202,6 +203,7 @@
                     <androidx.recyclerview.widget.RecyclerView
                         android:id="@+id/rv_discover_books"
                         android:layout_width="match_parent"
+                        android:background="@android:color/transparent"
                         android:layout_height="match_parent"
                         android:clipToPadding="false"
                         android:paddingStart="2dp"
