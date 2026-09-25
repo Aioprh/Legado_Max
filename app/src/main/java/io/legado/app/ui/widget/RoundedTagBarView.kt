@@ -104,6 +104,7 @@ class RoundedTagBarView @JvmOverloads constructor(
     private var selectedBackgroundVisible = true
     private var displayMode = DisplayMode.CHIP
     private var backgroundOverrideColor: Int? = null
+    private var outerBackgroundVisible = true
 
     init {
         clipChildren = true
@@ -171,11 +172,15 @@ class RoundedTagBarView @JvmOverloads constructor(
         val glassSurface = ColorUtilsCompat.withAlpha(baseSurface, if (isNight) 0.92f else 0.86f)
         val glassStroke = if (isNight) 0x55FFFFFF else 0x99FFFFFF.toInt()
 
-        background = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = 20.dp.toFloat()
-            setColor(glassSurface)
-            setStroke(1.dp, glassStroke)
+        if (outerBackgroundVisible) {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 20.dp.toFloat()
+                setColor(glassSurface)
+                setStroke(1.dp, glassStroke)
+            }
+        } else {
+            background = null
         }
         // 半透明圆角表面叠加 elevation 阴影，在部分渲染器上会表现为一条细白横线，
         // 与书架页 SmartTagFilterBar 的处理一致，胶囊不设置 elevation/translationZ。
@@ -195,6 +200,17 @@ class RoundedTagBarView @JvmOverloads constructor(
     fun setDisplayMode(mode: DisplayMode) {
         if (displayMode == mode) return
         displayMode = mode
+        styleSignature = null
+        applyTopBarStyle(force = true)
+    }
+
+    /**
+     * 控制标签栏最外层的玻璃背景。发现页使用与书架页一致的透底标签，
+     * 只保留内部标签胶囊，不绘制整条横向背景。
+     */
+    fun setOuterBackgroundVisible(visible: Boolean) {
+        if (outerBackgroundVisible == visible) return
+        outerBackgroundVisible = visible
         styleSignature = null
         applyTopBarStyle(force = true)
     }
