@@ -229,6 +229,10 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
         // 之前加在固定高度的 sourceRow 上，会把状态栏高度挤进 52dp 行高，
         // 导致第一层分类胶囊向上侵入书源选择区，出现胶囊遮挡顶部按钮/文字。
         binding.llModernDiscovery.applyStatusBarPadding(withInitialPadding = true)
+        // 发现页保留“大胶囊 + 小胶囊”的结构，但让大胶囊内部透底，
+        // 避免胶囊后方出现一整块不透明遮挡层。
+        binding.rvDiscoverTags.setBackgroundOverrideColor(Color.TRANSPARENT)
+        binding.rvDiscoverSelects.setBackgroundOverrideColor(Color.TRANSPARENT)
         binding.rvFind.clipToPadding = false
         binding.rvDiscoverBooks.clipToPadding = false
         updateMainBottomPadding((activity as? MainActivity)?.mainContentBottomPadding() ?: 0)
