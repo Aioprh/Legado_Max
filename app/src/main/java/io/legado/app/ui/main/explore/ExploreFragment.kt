@@ -487,6 +487,9 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
             showDiscoverTagsSelector()
         }
         ExpandableTagSelector.configureExpandButton(binding.btnDiscoverTagsExpand)
+        // 新版发现页顶部分类标签采用与书架页一致的透底玻璃效果。
+        binding.rvDiscoverTags.setBackgroundOverrideColor(android.graphics.Color.TRANSPARENT)
+        binding.rvDiscoverSelects.setBackgroundOverrideColor(android.graphics.Color.TRANSPARENT)
         binding.btnDiscoverSelectsExpand.setOnClickListener {
             showDiscoverMajorGroupsSelector()
         }
