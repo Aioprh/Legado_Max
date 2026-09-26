@@ -89,7 +89,10 @@ interface BookSourceDao {
 
     @Query(
         """select * from book_sources_part 
-        where enabledExplore = 1 and hasExploreUrl = 1 order by customOrder asc"""
+        where enabled = 1 
+        and enabledExplore = 1 
+        and hasExploreUrl = 1 
+        order by customOrder asc"""
     )
     fun flowExplore(): Flow<List<BookSourcePart>>
 
@@ -111,7 +114,8 @@ interface BookSourceDao {
 
     @Query(
         """select * from book_sources_part 
-        where enabledExplore = 1 
+        where enabled = 1 
+        and enabledExplore = 1 
         and hasExploreUrl = 1 
         and (bookSourceGroup like '%' || :key || '%' 
             or bookSourceName like '%' || :key || '%') 
@@ -121,7 +125,8 @@ interface BookSourceDao {
 
     @Query(
         """select * from book_sources_part 
-        where enabledExplore = 1 
+        where enabled = 1 
+        and enabledExplore = 1 
         and hasExploreUrl = 1 
         and (bookSourceGroup = :key
             or bookSourceGroup like :key || ',%' 
@@ -142,7 +147,8 @@ interface BookSourceDao {
 
     @Query(
         """select distinct bookSourceGroup from book_sources 
-        where enabledExplore = 1 
+        where enabled = 1 
+        and enabledExplore = 1 
         and trim(exploreUrl) <> '' 
         and trim(bookSourceGroup) <> ''
         order by customOrder"""
