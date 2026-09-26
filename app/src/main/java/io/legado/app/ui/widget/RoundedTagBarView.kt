@@ -25,7 +25,9 @@ import io.legado.app.help.config.TopBarConfig
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.lib.theme.primaryTextColor
+import io.legado.app.lib.theme.transparentNavBar
 import io.legado.app.lib.theme.uiTypeface
+import io.legado.app.utils.LogUtils
 
 /**
  * 书架分组标签导航条，在分组样式为标签时显示于分组栏下方。
@@ -160,16 +162,50 @@ class RoundedTagBarView @JvmOverloads constructor(
     /**
      * 应用二级标签栏液态玻璃样式。
      * 采用静态磨砂模拟，避免额外的实时模糊采样影响书架滚动性能。
+     *
+     * 胶囊透明度与书架页顶栏保持一致：外层大胶囊与未选中标签跟随
+     * 「标签栏透明度」（[TopBarConfig.Config.tagBarAlpha]），选中标签跟随
+     * 「选中标签透明度」（[TopBarConfig.Config.tagSelectedAlpha]）。
+     * 透明度为 0 时整行胶囊完全透明（底色与描边一起去掉），只保留文字，
+     * 透明导航栏下同样强制透明，与 TitleBarConfig 的处理保持一致。
      */
     fun applyTopBarStyle(force: Boolean = false) {
-        val signature = "${TopBarConfig.currentSignature(AppConfig.isNightTheme)}|$displayMode|$backgroundOverrideColor"
+        val config = TopBarConfig.currentConfig(context, AppConfig.isNightTheme)
+        val signature = "${TopBarConfig.currentSignature(AppConfig.isNightTheme)}|$displayMode" +
+            "|$backgroundOverrideColor|${config.tagBarAlpha}|${config.tagSelectedAlpha}"
         if (!force && styleSignature == signature) return
         styleSignature = signature
 
         val isNight = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val tagBarOpacity = if (context.transparentNavBar) 0 else config.tagBarAlpha
+        val tagSelectedOpacity = config.tagSelectedAlpha
+        val tagBarVisible = tagBarOpacity > 0
+        val tagSelectedVisible = tagSelectedOpacity > 0
+
         val baseSurface = backgroundOverrideColor ?: if (isNight) 0x661B1B1D else 0xB8FFFFFF.toInt()
-        val glassSurface = ColorUtilsCompat.withAlpha(baseSurface, if (isNight) 0.92f else 0.86f)
-        val glassStroke = if (isNight) 0x55FFFFFF else 0x99FFFFFF.toInt()
+        val glassSurface = applyOpacity(
+            ColorUtilsCompat.withAlpha(baseSurface, if (isNight) 0.92f else 0.86f),
+            tagBarOpacity
+        )
+        val glassStroke = if (tagBarVisible) {
+            if (isNight) 0x55FFFFFF else 0x99FFFFFF.toInt()
+        } else {
+            Color.TRANSPARENT
+        }
+        val normalFill = applyOpacity(
+            if (isNight) 0x331F1F22 else 0x70FFFFFF.toInt(),
+            tagBarOpacity
+        )
+        val normalStroke = if (tagBarVisible) {
+            if (isNight) 0x55FFFFFF else 0x8CFFFFFF.toInt()
+        } else {
+            Color.TRANSPARENT
+        }
+        val selectedFill = applyOpacity(
+            ColorUtilsCompat.withAlpha(context.accentColor, 0.82f),
+            tagSelectedOpacity
+        )
+        val selectedStroke = if (tagSelectedVisible) 0x99FFFFFF.toInt() else Color.TRANSPARENT
 
         background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
@@ -183,14 +219,24 @@ class RoundedTagBarView @JvmOverloads constructor(
         translationZ = 0f
 
         adapter.normalTextColor = if (isNight) Color.argb(225, 255, 255, 255) else context.primaryTextColor
-        adapter.selectedTextColor = Color.WHITE
+        // 选中胶囊透明后去掉白底，文字改用主题色，避免白字落在页面背景上看不见。
+        adapter.selectedTextColor = if (tagSelectedVisible) Color.WHITE else context.accentColor
         adapter.selectedBackgroundColor = context.accentColor
-        adapter.glassNormalFill = if (isNight) 0x331F1F22 else 0x70FFFFFF
-        adapter.glassNormalStroke = if (isNight) 0x55FFFFFF else 0x8CFFFFFF.toInt()
-        adapter.glassSelectedFill = ColorUtilsCompat.withAlpha(context.accentColor, 0.82f)
-        adapter.glassSelectedStroke = 0x99FFFFFF.toInt()
+        adapter.glassNormalFill = normalFill
+        adapter.glassNormalStroke = normalStroke
+        adapter.glassSelectedFill = selectedFill
+        adapter.glassSelectedStroke = selectedStroke
         adapter.notifyDataSetChanged()
+        LogUtils.d(
+            "RoundedTagBarView",
+            "标签胶囊样式已应用: night=$isNight, tagBarOpacity=$tagBarOpacity, " +
+                "tagSelectedOpacity=$tagSelectedOpacity"
+        )
     }
+
+    /** 把透明度百分比（0-100）叠加到颜色上，0 表示完全透明 */
+    private fun applyOpacity(color: Int, opacity: Int): Int =
+        if (opacity <= 0) Color.TRANSPARENT else ColorUtilsCompat.withAlpha(color, opacity / 100f)
 
     fun setDisplayMode(mode: DisplayMode) {
         if (displayMode == mode) return

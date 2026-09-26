@@ -38,6 +38,7 @@ import com.script.rhino.runScriptWithContext
 import io.legado.app.R
 import io.legado.app.base.VMBaseFragment
 import io.legado.app.constant.AppLog
+import io.legado.app.constant.EventBus
 import io.legado.app.data.AppDatabase
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookSource
@@ -85,6 +86,7 @@ import io.legado.app.utils.dpToPx
 import io.legado.app.utils.cnCompare
 import io.legado.app.utils.flowWithLifecycleAndDatabaseChange
 import io.legado.app.utils.InfoMap
+import io.legado.app.utils.observeEvent
 import io.legado.app.utils.SurfaceBackdrop
 import io.legado.app.utils.applyAdaptiveDim
 import io.legado.app.utils.windowSize
@@ -207,6 +209,15 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
         const val DISCOVER_LAYOUT_COUNT = 3
         const val DISCOVER_DIALOG_WIDTH_RATIO = 0.90f
         const val DISCOVER_DIALOG_HEIGHT_RATIO = 0.72f
+    }
+
+    override fun observeLiveBus() {
+        observeEvent<Boolean>(EventBus.TOP_BAR_CHANGED) {
+            // 新版发现页隐藏了 TitleBar，两行标签胶囊的底色直接跟随顶栏配置，
+            // 顶栏配置（标签栏/选中标签透明度）变更时需要重新应用。
+            binding.rvDiscoverSelects.applyTopBarStyle()
+            binding.rvDiscoverTags.applyTopBarStyle()
+        }
     }
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
