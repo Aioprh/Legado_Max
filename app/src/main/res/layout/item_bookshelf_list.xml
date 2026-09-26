@@ -226,18 +226,27 @@
         app:layout_constraintRight_toLeftOf="@id/iv_audio_play"
         app:layout_constraintTop_toBottomOf="@id/tv_last" />
 
-    <com.google.android.flexbox.FlexboxLayout
-        android:id="@+id/flexbox_tags"
+    <HorizontalScrollView
+        android:id="@+id/hsv_tags"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="5dp"
+        android:fillViewport="false"
+        android:overScrollMode="never"
+        android:scrollbars="none"
         android:visibility="gone"
-        app:alignContent="flex_start"
-        app:flexDirection="row"
-        app:flexWrap="wrap"
         app:layout_constraintLeft_toLeftOf="@id/tv_name"
         app:layout_constraintRight_toLeftOf="@id/iv_audio_play"
-        app:layout_constraintTop_toBottomOf="@id/pb_progress" />
+        app:layout_constraintTop_toBottomOf="@id/pb_progress">
+
+        <com.google.android.flexbox.FlexboxLayout
+            android:id="@+id/flexbox_tags"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:alignContent="flex_start"
+            app:flexDirection="row"
+            app:flexWrap="nowrap" />
+    </HorizontalScrollView>
 
     <TextView
         android:id="@+id/tv_intro"
@@ -253,7 +262,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toLeftOf="@id/tv_name"
         app:layout_constraintRight_toLeftOf="@id/iv_audio_play"
-        app:layout_constraintTop_toBottomOf="@id/flexbox_tags"
+        app:layout_constraintTop_toBottomOf="@id/hsv_tags"
         tools:ignore="TextContrastCheck" />
 
     <View
