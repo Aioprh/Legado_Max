@@ -302,9 +302,9 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
             // 分类标签（不含字数）
             val kindTags = item.kind?.splitNotBlank(",", "\n").orEmpty()
             if (kindTags.isEmpty()) {
-                llKind.gone()
+                hsvKind.gone()
             } else {
-                llKind.visible()
+                hsvKind.visible()
                 llKind.setLabels(kindTags.toList())
             }
             // 字数，放在分类标签下方

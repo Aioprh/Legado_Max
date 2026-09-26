@@ -110,12 +110,20 @@
             android:textColor="@color/secondaryText"
             android:textSize="12sp" />
 
-        <io.legado.app.ui.widget.LabelsBar
-            android:id="@+id/ll_kind"
+        <HorizontalScrollView
+            android:id="@+id/hsv_kind"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="3dp"
-            android:orientation="horizontal" />
+            android:scrollbars="none">
+
+            <io.legado.app.ui.widget.LabelsBar
+                android:id="@+id/ll_kind"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" />
+
+        </HorizontalScrollView>
 
         <TextView
             android:id="@+id/tv_word_count"

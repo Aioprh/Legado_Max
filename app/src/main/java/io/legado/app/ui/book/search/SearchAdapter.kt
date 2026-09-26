@@ -151,9 +151,9 @@ class SearchAdapter(context: Context, val callBack: CallBack) :
         // 分类标签（不含字数）
         val kindTags = book.kind?.splitNotBlank(",", "\n").orEmpty()
         if (kindTags.isEmpty()) {
-            llKind.gone()
+            hsvKind.gone()
         } else {
-            llKind.visible()
+            hsvKind.visible()
             llKind.setLabels(kindTags.toList())
         }
         // 字数，放在分类标签下方
