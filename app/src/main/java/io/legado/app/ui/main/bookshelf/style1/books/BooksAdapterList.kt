@@ -119,9 +119,9 @@ class BooksAdapterList(
 
     private fun upMoreInfo(binding: ItemBookshelfListBinding, item: BookShelfDisplay) {
         if (AppConfig.showMoreInfoInList && AppConfig.showTagsInList) {
-            binding.flexboxTags.visible()
+            binding.hsvTags.visible()
             updateTagViews(binding.flexboxTags, item)
-        } else binding.flexboxTags.gone()
+        } else binding.hsvTags.gone()
 
         if (AppConfig.showMoreInfoInList && AppConfig.showIntroInList) {
             binding.tvIntro.visible()
