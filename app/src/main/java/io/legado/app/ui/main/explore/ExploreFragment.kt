@@ -85,6 +85,7 @@ import io.legado.app.utils.dpToPx
 import io.legado.app.utils.cnCompare
 import io.legado.app.utils.flowWithLifecycleAndDatabaseChange
 import io.legado.app.utils.InfoMap
+import io.legado.app.utils.LogUtils
 import io.legado.app.utils.SurfaceBackdrop
 import io.legado.app.utils.applyAdaptiveDim
 import io.legado.app.utils.windowSize
@@ -231,6 +232,19 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
         binding.llModernDiscovery.applyStatusBarPadding(withInitialPadding = true)
         binding.rvFind.clipToPadding = false
         binding.rvDiscoverBooks.clipToPadding = false
+        // 新版发现页头部（书源选择行 + 两行标签胶囊）整块浮在书籍列表之上：
+        // 列表顶部留白按头部实测高度补齐，滚动时条目从头部与大小胶囊下方穿过，
+        // 而不是滚到头部下边缘就被切断。
+        binding.llDiscoverHeader.addOnLayoutChangeListener { _, _, top, _, bottom, _, oldTop, _, oldBottom ->
+            val headerHeight = bottom - top
+            if (headerHeight != oldBottom - oldTop) {
+                binding.rvDiscoverBooks.updatePadding(top = headerHeight + 8.dpToPx())
+                LogUtils.d(
+                    "ExploreFragment",
+                    "新版发现页头部高度变化 ${oldBottom - oldTop} -> $headerHeight，列表顶部留白已同步"
+                )
+            }
+        }
         updateMainBottomPadding((activity as? MainActivity)?.mainContentBottomPadding() ?: 0)
         applyDiscoveryMode(loadData = false)
     }
