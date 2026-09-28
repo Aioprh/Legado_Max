@@ -110,7 +110,7 @@
             android:textColor="@color/secondaryText"
             android:textSize="12sp" />
 
-        <HorizontalScrollView
+        <io.legado.app.ui.widget.ClickThroughHorizontalScrollView
             android:id="@+id/hsv_kind"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -123,7 +123,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal" />
 
-        </HorizontalScrollView>
+        </io.legado.app.ui.widget.ClickThroughHorizontalScrollView>
 
         <TextView
             android:id="@+id/tv_word_count"

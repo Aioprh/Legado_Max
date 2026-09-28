@@ -93,7 +93,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/ll_name_container_waterfall" />
 
-        <HorizontalScrollView
+        <io.legado.app.ui.widget.ClickThroughHorizontalScrollView
             android:id="@+id/hsv_kind_waterfall"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -111,7 +111,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal" />
 
-        </HorizontalScrollView>
+        </io.legado.app.ui.widget.ClickThroughHorizontalScrollView>
 
         <TextView
             android:id="@+id/tv_word_count_waterfall"

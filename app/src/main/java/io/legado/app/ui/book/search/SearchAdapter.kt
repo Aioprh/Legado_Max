@@ -89,8 +89,7 @@ class SearchAdapter(context: Context, val callBack: CallBack) :
             }
             true
         }
-        // 分类标签栏为横向滚动的 HorizontalScrollView，会消费触摸事件，
-        // 这里把点击/长按转发到整卡，避免点标签行空白处无法进入详情。
+        // 分类标签的横向滑动容器会拦截空白区域的点击，转发给整张卡片
         binding.hsvKind.setOnClickListener { binding.root.performClick() }
         binding.hsvKind.setOnLongClickListener { binding.root.performLongClick() }
     }
