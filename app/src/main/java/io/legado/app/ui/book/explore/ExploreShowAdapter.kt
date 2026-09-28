@@ -84,6 +84,9 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
                     }
                     true
                 }
+                // 标签栏会消费触摸事件，转发点击/长按到整卡，避免点标签行空白处无法进入详情。
+                binding.hsvKindGrid.setOnClickListener { holder.itemView.performClick() }
+                binding.hsvKindGrid.setOnLongClickListener { holder.itemView.performLongClick() }
             }
             is ItemExploreShowWaterfallBinding -> {
                 val actualPosition = position - getHeaderCount()
@@ -101,6 +104,9 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
                     }
                     true
                 }
+                // 标签栏会消费触摸事件，转发点击/长按到整卡，避免点标签行空白处无法进入详情。
+                binding.hsvKindWaterfall.setOnClickListener { holder.itemView.performClick() }
+                binding.hsvKindWaterfall.setOnLongClickListener { holder.itemView.performLongClick() }
             }
             else -> super.onBindViewHolder(holder, position, payloads)
         }
@@ -348,6 +354,10 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
             }
             true
         }
+        // 分类标签栏为横向滚动的 HorizontalScrollView，会消费触摸事件，
+        // 这里把点击/长按转发到整卡，避免点标签行空白处无法进入详情。
+        binding.hsvKind.setOnClickListener { holder.itemView.performClick() }
+        binding.hsvKind.setOnLongClickListener { holder.itemView.performLongClick() }
     }
 
     interface CallBack {
