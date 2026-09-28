@@ -93,17 +93,25 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/ll_name_container_waterfall" />
 
-        <io.legado.app.ui.widget.LabelsBar
-            android:id="@+id/ll_kind_waterfall"
+        <HorizontalScrollView
+            android:id="@+id/hsv_kind_waterfall"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:layout_marginStart="8dp"
             android:layout_marginEnd="8dp"
-            android:orientation="horizontal"
+            android:scrollbars="none"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tv_author_waterfall" />
+            app:layout_constraintTop_toBottomOf="@id/tv_author_waterfall">
+
+            <io.legado.app.ui.widget.LabelsBar
+                android:id="@+id/ll_kind_waterfall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" />
+
+        </HorizontalScrollView>
 
         <TextView
             android:id="@+id/tv_word_count_waterfall"
@@ -118,7 +126,7 @@
             android:textSize="11sp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/ll_kind_waterfall" />
+            app:layout_constraintTop_toBottomOf="@id/hsv_kind_waterfall" />
 
         <TextView
             android:id="@+id/tv_lasted_waterfall"

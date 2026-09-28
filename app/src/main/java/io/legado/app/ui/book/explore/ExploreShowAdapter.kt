@@ -121,9 +121,9 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         // 分类标签（不含字数）
         val kindTags = item.kind?.splitNotBlank(",", "\n").orEmpty()
         if (kindTags.isEmpty()) {
-            binding.llKindGrid.gone()
+            binding.hsvKindGrid.gone()
         } else {
-            binding.llKindGrid.visible()
+            binding.hsvKindGrid.visible()
             binding.llKindGrid.setLabels(kindTags.toList())
         }
 
@@ -192,9 +192,9 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         // 分类标签（不含字数）
         val kindTags = item.kind?.splitNotBlank(",", "\n").orEmpty()
         if (kindTags.isEmpty()) {
-            binding.llKindWaterfall.gone()
+            binding.hsvKindWaterfall.gone()
         } else {
-            binding.llKindWaterfall.visible()
+            binding.hsvKindWaterfall.visible()
             binding.llKindWaterfall.setLabels(kindTags.toList())
         }
 
