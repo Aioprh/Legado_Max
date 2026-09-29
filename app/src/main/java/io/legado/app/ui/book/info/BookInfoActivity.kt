@@ -1159,7 +1159,7 @@ class BookInfoActivity :
             }
             selector(getString(R.string.book_paragraph_comment_source), names) { _, index ->
                 if (index in urls.indices && urls[index] == io.legado.app.model.webBook.QidianParagraphComment.BINDING_PREFIX) {
-                    showQidianBindingDialog(sourceHolder, sourceRow, sourceName)
+                    showQidianBindingDialog(sourceHolder, sourceRow, ::sourceName)
                 } else if (index in urls.indices) {
                     sourceHolder[0] = urls[index].ifBlank { null }
                     sourceRow.text = getString(R.string.book_paragraph_comment_source) +
