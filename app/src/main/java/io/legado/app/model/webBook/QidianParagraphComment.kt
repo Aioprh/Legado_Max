@@ -41,12 +41,12 @@ object QidianParagraphComment {
     fun extractBookId(value: String?): String? {
         val text = value?.trim().orEmpty()
         if (text.isEmpty()) return null
-        if (text.matches(Regex("\\\\d+"))) return text
+        if (text.matches(Regex("\\d+"))) return text
         val decoded = runCatching { URLDecoder.decode(text, "UTF-8") }.getOrDefault(text)
         val patterns = listOf(
-            Regex("(?:qidian\\\\.com|book\\\\.qidian\\\\.com|m\\\\.qidian\\\\.com)[^\\\\d]{0,80}(?:info|book)[^\\\\d]{0,20}(\\\\d{5,})", RegexOption.IGNORE_CASE),
-            Regex("/(?:info|book)/(\\\\d{5,})(?:/|[?#]|$)", RegexOption.IGNORE_CASE),
-            Regex("[?&](?:bookId|bookid|bid)=(\\\\d{5,})", RegexOption.IGNORE_CASE)
+            Regex("(?:qidian\\.com|book\\.qidian\\.com|m\\.qidian\\.com)[^\\d]{0,80}(?:info|book)[^\\d]{0,20}(\\d{5,})", RegexOption.IGNORE_CASE),
+            Regex("/(?:info|book)/(\\d{5,})(?:/|[?#]|$)", RegexOption.IGNORE_CASE),
+            Regex("[?&](?:bookId|bookid|bid)=(\\d{5,})", RegexOption.IGNORE_CASE)
         )
         return patterns.asSequence().mapNotNull { it.find(decoded)?.groupValues?.getOrNull(1) }.firstOrNull()
     }
@@ -71,14 +71,14 @@ object QidianParagraphComment {
         val result = LinkedHashMap<String, SearchResult>()
         doc.select("a[href]").forEach { link ->
             val href = link.attr("href")
-            val id = Regex("/(?:info|book)/(\\\\d{5,})(?:/|[?#]|$)").find(href)?.groupValues?.get(1)
+            val id = Regex("/(?:info|book)/(\\d{5,})(?:/|[?#]|$)").find(href)?.groupValues?.get(1)
                 ?: extractBookId(href) ?: return@forEach
             val box = link.parents().firstOrNull { parent ->
                 parent.select("a[href]").size <= 8 && parent.text().length in 2..500
             } ?: link
             val name = (link.attr("title").ifBlank { link.text() }).trim()
             if (name.isBlank() || name.length > 120) return@forEach
-            val author = Regex("(?:作者|作\\\\者)\\\\s*[:：]?\\\\s*([^\\\\s|·/]{1,40})")
+            val author = Regex("(?:作者|作\\\\者)\\s*[:：]?\\s*([^\\s|·/]{1,40})")
                 .find(box.text())?.groupValues?.getOrNull(1).orEmpty()
             result.putIfAbsent(id, SearchResult(id, name, author))
         }
