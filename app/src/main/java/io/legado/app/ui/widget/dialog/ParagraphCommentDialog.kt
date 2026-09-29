@@ -108,7 +108,7 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         dialog?.window?.setGravity(Gravity.BOTTOM)
         val dm = resources.displayMetrics
         // 半屏底部面板：保留足够的评论浏览空间，同时露出正文背景。
-        setLayout(ViewGroup.LayoutParams.MATCH_PARENT, (dm.heightPixels * 0.56).toInt())
+        setLayout(ViewGroup.LayoutParams.MATCH_PARENT, (dm.heightPixels * 0.50f).toInt())
         dialog?.window?.setDimAmount(0.18f)
         // 弹窗显示期间启用 DiffUtil 增量更新，分页/排序重排时保持滚动位置；
         // 否则 setItems(list, callback) 会退化为 notifyDataSetChanged 全量刷新导致列表跳回顶部
