@@ -864,9 +864,62 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             collectImageUrls(v, result)
             if (result.size >= 9) break
         }
-        // 兜底：候选字段名未命中时，按 key 名（含 img/pic/image）扫描，兼容其它站点不同命名
+        // 有些段评接口并不单独返回 Images 字段，而是把图片直接放在 Content/ImageMeaning
+        // 的 HTML 中，例如 <img src="..."> / <img data-src="...">。这种情况下原逻辑只能拿到文字，
+        // 因为 TextView 不会像网页一样自动渲染 img，所以这里额外从内容字段提取图片地址。
+        if (result.isEmpty()) {
+            val contentKeys = buildList {
+                if (config.fields.content.isNotBlank()) add(config.fields.content)
+                addAll(DEFAULT_CONTENTS)
+                add("Content")
+                add("content")
+                add("Text")
+                add("text")
+                add("ImageMeaning")
+            }
+            contentKeys.distinct().forEach { key ->
+                findKey(map, key)?.let { extractImagesFromTextValue(it, result) }
+                if (result.size >= 9) return@forEach
+            }
+        }
+        // 最后再按 key 名兜底扫描，兼容其它站点不同命名。
         if (result.isEmpty()) collectImpliedImageUrls(map, result)
         return result.take(9)
+    }
+
+    /** 从 Content/ImageMeaning 等字符串中的 HTML 提取图片，兼容 src、data-src、data-original、data-image。 */
+    private fun extractImagesFromTextValue(value: Any?, out: MutableSet<String>) {
+        when (value) {
+            null -> Unit
+            is Map<*, *> -> value.values.forEach { extractImagesFromTextValue(it, out) }
+            is List<*> -> value.forEach { extractImagesFromTextValue(it, out) }
+            else -> {
+                var s = value.toString()
+                    .replace("\\u003C", "<", ignoreCase = true)
+                    .replace("\\u003E", ">", ignoreCase = true)
+                    .replace("&quot;", """, ignoreCase = true)
+                    .replace("&#34;", """, ignoreCase = true)
+                    .replace("&amp;", "&", ignoreCase = true)
+                if (!s.contains("<img", ignoreCase = true)) return
+
+                val imgTag = Regex("<img\\b[^>]*>", RegexOption.IGNORE_CASE)
+                val attr = Regex(
+                    """(?:src|data-src|data-original|data-image|data-url|original)\\s*=\\s*['"]([^'"]+)['"]""",
+                    RegexOption.IGNORE_CASE
+                )
+                imgTag.findAll(s).forEach { tag ->
+                    attr.findAll(tag.value).forEach { match ->
+                        var url = match.groupValues[1].trim()
+                        if (url.startsWith("//")) url = "https:$url"
+                        if ((url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:image/")) &&
+                            out.size < 9
+                        ) {
+                            out.add(url)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /** 兼容候选字段名未命中时，收集字段名含 img/pic/image 的 http 地址（避开头像/正文里的普通链接） */
