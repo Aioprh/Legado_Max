@@ -301,7 +301,7 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
                 }
 
                 is ImageColumn -> {
-                    val click = column.click
+                    val click = column.click ?: ParagraphBubbleRenderer.clickScript(column.src)
                     // 段评气泡但未提取到点击脚本属异常，仅此时记录日志
                     if (ParagraphBubbleRenderer.isBubbleSrc(column.src) && click.isNullOrBlank()) {
                         AppLog.put("点击段评气泡但 click 为空: src=${column.src.take(100)}")
