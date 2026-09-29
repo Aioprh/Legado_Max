@@ -51,7 +51,7 @@ object QidianParagraphComment {
             Regex("(?:qidian\\\\.com|book\\\\.qidian\\\\.com|m\\\\.qidian\\\\.com)[^\\\\d]{0,80}(?:info|book)[^\\\\d]{0,20}(\\\\d{5,})", RegexOption.IGNORE_CASE),
             Regex("/(?:info|book)/(\\\\d{5,})(?:/|[?#]|$)", RegexOption.IGNORE_CASE),
             Regex("[?&](?:bookId|bookid|bid)=(\\\\d{5,})", RegexOption.IGNORE_CASE),
-            Regex("""["'](?:bookId|bookid|book_id|bid)["']\s*[:=]\s*["']?(\d{5,})""", RegexOption.IGNORE_CASE)
+            Regex("""["']?(?:bookId|bookid|book_id|bid)["']?\s*[:=]\s*["']?(\d{5,})""", RegexOption.IGNORE_CASE)
         )
         return patterns.asSequence().mapNotNull { it.find(decoded)?.groupValues?.getOrNull(1) }.firstOrNull()
     }
