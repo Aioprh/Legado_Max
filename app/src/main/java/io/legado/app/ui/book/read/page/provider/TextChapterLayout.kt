@@ -2175,11 +2175,19 @@ class TextChapterLayout(
     }
 
     /**
-     * 还原 AI 生成规则泄漏进正文的 JSON 字符串转义（\" -> "，\\ -> \），
-     * 使 \” 包裹的键值能通过 GSON 正常解析。
+     * 还原 option 的 JSON 字符串转义（\" -> "，\\ -> \），并解码 HTML 实体引号。
+     *
+     * dp: 协议由本地段评注入（如 {@code QidianParagraphComment}）时，为避免 <img src="...">
+     * 属性里的双引号截断，option 用 {@code &quot;} 转义；若不先解码成 "，GSON 会解析失败、
+     * 兜底正则也匹配不到键，导致气泡能显示计数却拿不到 click（点击无反应仍翻页）。
      */
     private fun unescapeJsonOption(raw: String): String {
         return raw
+            .replace("&quot;", "\"", ignoreCase = true)
+            .replace("&#34;", "\"")
+            .replace("&#x22;", "\"", ignoreCase = true)
+            .replace("&apos;", "'", ignoreCase = true)
+            .replace("&#39;", "'")
             .replace("\\\"", "\"")
             .replace("\\\\", "\\")
     }
