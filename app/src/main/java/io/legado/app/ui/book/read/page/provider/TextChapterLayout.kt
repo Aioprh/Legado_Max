@@ -2050,8 +2050,6 @@ class TextChapterLayout(
      * 已是气泡 URL 或开关关闭时返回原始 src 和 null click。
      */
     private fun tryParseForcedBubbleSrcWithClick(src: String): ForcedBubbleResult {
-        // dp: 段评气泡协议（AI 生成书源使用）始终解析成气泡，不受“强制使用软件气泡”开关限制；
-        // 该开关仅用于把站点原生图片形式的段评入口（data:svg/type/click 等）转换成软件气泡。
         if (src.startsWith(PARAGRAPH_BUBBLE_PREFIX, ignoreCase = true)) {
             return parseParagraphBubble(src)
         }
@@ -2077,46 +2075,21 @@ class TextChapterLayout(
         val clickQuery = clickScript?.let { "&click=${Uri.encode(it)}" }.orEmpty()
         val bubbleUrl = "bubble://paragraph?displayText=$encodedText&num=$encodedText&status=$encodedStatus$colorQuery$clickQuery"
         return ForcedBubbleResult(bubbleUrl, pclick ?: click)
-        return ForcedBubbleResult(bubbleUrl, pclick ?: click)
     }
 
-    /**
-     * 解析 dp: 协议的段评气泡 src。
-     *
-     * 格式：dp:<count>,{"pclick":"...","status":"normal","displayColor":"..."}
-     * - count 部分作为气泡显示文本的 fallback
-     * - option JSON 中的 displayText/num/count 等优先作为显示文本
-     * - pclick/click 保留为点击脚本
-     */
     private fun parseParagraphBubble(src: String): ForcedBubbleResult {
         val payload = src.substring(PARAGRAPH_BUBBLE_PREFIX.length).trim()
         val optionIndex = payload.indexOf(",{")
-        val count = if (optionIndex >= 0) {
-            payload.substring(0, optionIndex)
-        } else {
-            payload
-        }.trim()
+        val count = if (optionIndex >= 0) payload.substring(0, optionIndex) else payload
         var option: Map<String, String> = if (optionIndex >= 0) {
             val optionStr = payload.substring(optionIndex + 1)
-            GSON.fromJsonObject<Map<String, String>>(optionStr)
-                .getOrNull()
-                .orEmpty()
-                .ifEmpty {
-                    // 兼容 AI 生成规则把 JSON 的 \" 原样输出成 \” 包裹的键值：
-                    // 先还原转义再解析，否则 pclick/click 提取不到，气泡点击会失效
-                    GSON.fromJsonObject<Map<String, String>>(unescapeJsonOption(optionStr))
-                        .getOrNull()
-                        .orEmpty()
-                }
-        } else {
-            emptyMap()
-        }
-        // GSON 严格解析失败（option 可能被 HTML 解码/正则截断破坏）时，
-        // 从原始 option 串手工提取 pclick/click 等键值，保证气泡可点击
+            GSON.fromJsonObject<Map<String, String>>(optionStr).getOrNull().orEmpty()
+                .ifEmpty { GSON.fromJsonObject<Map<String, String>>(unescapeJsonOption(optionStr)).getOrNull().orEmpty() }
+        } else emptyMap()
         if (option.isEmpty() && optionIndex >= 0) {
             option = extractBubbleOptionFallback(payload.substring(optionIndex + 1))
         }
-        val displayText = extractForcedBubbleDisplayText(src, src, option) ?: count
+        val displayText = extractForcedBubbleDisplayText(src, src, option) ?: count.trim()
         val status = option.valueIgnoreCase("status")?.takeIf { it.isNotBlank() } ?: "normal"
         val displayColor = extractForcedBubbleColor(src, src, option)
         val colorQuery = displayColor?.let { "&displayColor=${Uri.encode(it)}" }.orEmpty()
@@ -2127,10 +2100,9 @@ class TextChapterLayout(
         val clickScript = (pclick ?: click).takeIf { it.isNotBlank() }
         val clickQuery = clickScript?.let { "&click=${Uri.encode(it)}" }.orEmpty()
         val bubbleUrl = "bubble://paragraph?displayText=$encodedText&num=$encodedText&status=$encodedStatus$colorQuery$clickQuery"
+        return ForcedBubbleResult(bubbleUrl, pclick ?: click)
     }
 
-
-    /** 段评气泡 option 的已知键，用于从非法 JSON 中定位值边界 */
     private val bubbleOptionKeys = setOf(
         "pclick", "click", "status", "style", "type", "width",
         "displayText", "displayColor", "num", "count", "text", "label", "js"
