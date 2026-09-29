@@ -897,14 +897,14 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                 var s = value.toString()
                     .replace("\\u003C", "<", ignoreCase = true)
                     .replace("\\u003E", ">", ignoreCase = true)
-                    .replace("&quot;", """, ignoreCase = true)
-                    .replace("&#34;", """, ignoreCase = true)
+                    .replace("&quot;", "\"", ignoreCase = true)
+                    .replace("&#34;", "\"", ignoreCase = true)
                     .replace("&amp;", "&", ignoreCase = true)
                 if (!s.contains("<img", ignoreCase = true)) return
 
                 val imgTag = Regex("<img\\b[^>]*>", RegexOption.IGNORE_CASE)
                 val attr = Regex(
-                    """(?:src|data-src|data-original|data-image|data-url|original)\\s*=\\s*['"]([^'"]+)['"]""",
+                    """(?:src|data-src|data-original|data-image|data-url|original)\s*=\s*['"]([^'"]+)['"]""",
                     RegexOption.IGNORE_CASE
                 )
                 imgTag.findAll(s).forEach { tag ->
