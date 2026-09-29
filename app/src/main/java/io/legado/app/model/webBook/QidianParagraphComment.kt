@@ -41,20 +41,60 @@ object QidianParagraphComment {
 
     data class SearchResult(val bookId: String, val name: String, val author: String = "")
 
-    /** 从起点书籍链接中提取作品 ID。支持 qidian.com/info、book.qidian.com/info 等常见链接。 */
+    /** 从普通起点书籍链接中提取作品 ID。 */
     fun extractBookId(value: String?): String? {
         val text = value?.trim().orEmpty()
         if (text.isEmpty()) return null
-        if (text.matches(Regex("\\d+"))) return text
+        if (text.matches(Regex("\\\\d+"))) return text
         val decoded = runCatching { URLDecoder.decode(text, "UTF-8") }.getOrDefault(text)
         val patterns = listOf(
-            Regex("(?:qidian\\.com|book\\.qidian\\.com|m\\.qidian\\.com)[^\\d]{0,80}(?:info|book)[^\\d]{0,20}(\\d{5,})", RegexOption.IGNORE_CASE),
-            Regex("/(?:info|book)/(\\d{5,})(?:/|[?#]|$)", RegexOption.IGNORE_CASE),
-            Regex("[?&](?:bookId|bookid|bid)=(\\d{5,})", RegexOption.IGNORE_CASE)
+            Regex("(?:qidian\\\\.com|book\\\\.qidian\\\\.com|m\\\\.qidian\\\\.com)[^\\\\d]{0,80}(?:info|book)[^\\\\d]{0,20}(\\\\d{5,})", RegexOption.IGNORE_CASE),
+            Regex("/(?:info|book)/(\\\\d{5,})(?:/|[?#]|$)", RegexOption.IGNORE_CASE),
+            Regex("[?&](?:bookId|bookid|bid)=(\\\\d{5,})", RegexOption.IGNORE_CASE)
         )
         return patterns.asSequence().mapNotNull { it.find(decoded)?.groupValues?.getOrNull(1) }.firstOrNull()
     }
 
+    /**
+     * 解析起点 H5 分享作品链接。
+     * share-link?id=... 中的数字是分享链接 ID，不是作品 bookId。
+     * 请求分享页后，从最终 URL、Location、canonical/og:url、链接及内嵌数据中寻找真正的 bookId。
+     */
+    suspend fun resolveBookId(value: String?): String? = withContext(Dispatchers.IO) {
+        extractBookId(value)?.let { return@withContext it }
+        val text = value?.trim().orEmpty()
+        val shareId = Regex(
+            """https?://h5\\.if\\.qidian\\.com/h5/share-link\\?id=(\\d{5,})""",
+            RegexOption.IGNORE_CASE
+        ).find(text)?.groupValues?.getOrNull(1) ?: return@withContext null
+        val shareUrl = "https://h5.if.qidian.com/h5/share-link?id=" + shareId
+        runCatching {
+            val request = Request.Builder()
+                .url(shareUrl)
+                .header("User-Agent", WEB_USER_AGENT)
+                .header("Accept", "text/html,application/xhtml+xml,application/json")
+                .header("Referer", "https://h5.if.qidian.com/")
+                .build()
+            client.newCall(request).execute().use { response ->
+                val candidates = ArrayList<String>()
+                candidates += response.request.url.toString()
+                response.header("Location")?.let { candidates += it }
+                val body = response.body?.string().orEmpty()
+                if (body.isNotBlank()) {
+                    candidates += body
+                    val doc = Jsoup.parse(body)
+                    doc.select("meta[content],a[href],link[href]").forEach { element ->
+                        element.attr("content").takeIf { it.isNotBlank() }?.let(candidates::add)
+                        element.attr("href").takeIf { it.isNotBlank() }?.let(candidates::add)
+                    }
+                    doc.select("script").forEach { script ->
+                        script.data().takeIf { it.isNotBlank() }?.let(candidates::add)
+                    }
+                }
+                candidates.asSequence().mapNotNull { extractBookId(it) }.firstOrNull()
+            }
+        }.getOrNull()
+    }
     suspend fun searchBooks(keyword: String): List<SearchResult> = withContext(Dispatchers.IO) {
         val q = keyword.trim()
         if (q.isEmpty()) return@withContext emptyList()
