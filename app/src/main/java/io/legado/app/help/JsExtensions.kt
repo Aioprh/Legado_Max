@@ -1158,6 +1158,16 @@ interface JsExtensions : JsEncodeUtils {
         }
     }
 
+    /** 本地书段评入口：不经过 BookSource，直接打开现有原生段评弹窗。 */
+    fun showQidianParagraphComments(bookId: String, chapterId: String, paragraphId: Int) {
+        val activity = LifecycleHelp.getCurrentActivity() as? AppCompatActivity ?: return
+        activity.runOnUiThread {
+            activity.showDialogFragment(
+                ParagraphCommentDialog(bookId, chapterId, paragraphId, true)
+            )
+        }
+    }
+
     /**
      * 弹窗提示 停留时间较长
      */
