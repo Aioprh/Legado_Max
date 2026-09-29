@@ -355,23 +355,32 @@ object QidianParagraphComment {
             return Device(saved, prefs.getString("model", "PFJM10") ?: "PFJM10")
         }
 
-        val now = java.text.SimpleDateFormat("yyyyMMddHHmmssSSS", java.util.Locale.US)
-            .format(java.util.Date())
+        val brands = arrayOf("realme", "OPPO", "Xiaomi", "vivo", "HUAWEI", "samsung", "Google", "HONOR")
+        val models = arrayOf("RMX3366", "PHY120", "24030PN60C", "V2324A", "ALN-AL10", "SM-S9280", "Pixel 4 XL", "MAA-AN10")
+        val index = kotlin.random.Random.nextInt(brands.size)
+        val model = models[index]
+        val brand = brands[index]
+        val now = java.text.SimpleDateFormat("yyyyMMddHHmmssSSS", java.util.Locale.US).apply {
+            timeZone = java.util.TimeZone.getTimeZone("GMT+8")
+        }.format(java.util.Date())
         val hex = "0123456789abcdef"
+        val digits = "0123456789"
         val mac = buildString {
             repeat(6) {
-                if (it > 0) append(':')
-                append(hex.random())
-                append(hex.random())
+                if (it > 0) append(":")
+                append(hex[kotlin.random.Random.nextInt(hex.length)])
+                append(hex[kotlin.random.Random.nextInt(hex.length)])
             }
+            repeat(6) { append(digits[kotlin.random.Random.nextInt(digits.length)]) }
         }
-        val qimei = now + mac + (100000..999999).random()
+        val qimei = now + mac
 
         prefs.edit()
             .putString("qimei", qimei)
-            .putString("model", "PFJM10")
+            .putString("model", model)
+            .putString("brand", brand)
             .apply()
-        return Device(qimei, "PFJM10")
+        return Device(qimei, model)
     }
 
     private fun tripleDesBase64(raw: String, key: String, iv: String): String {
@@ -427,5 +436,5 @@ object QidianParagraphComment {
     }
 
     private const val USER_AGENT =
-        "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0 Mobile Safari/537.36"
+        "Mozilla/mobile QDReaderAndroid/7.9.378/1436/1000009/Android"
 }
