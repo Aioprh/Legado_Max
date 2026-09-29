@@ -17,8 +17,10 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.CheckBox
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.text.InputType
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
@@ -1123,9 +1125,15 @@ class BookInfoActivity :
         }
         layout.addView(switch)
         // 书源选择行
-        fun sourceName(url: String?): String = url?.takeIf { it.isNotBlank() }
-            ?.let { appDb.bookSourceDao.getBookSourcePart(it)?.bookSourceName }
-            ?: getString(R.string.book_paragraph_comment_source_none)
+        fun sourceName(url: String?): String {
+            if (io.legado.app.model.webBook.QidianParagraphComment.isBinding(url)) {
+                val id = io.legado.app.model.webBook.QidianParagraphComment.bookId(url)
+                return "起点直连" + (id?.let { "（" + it + "）" } ?: "")
+            }
+            return url?.takeIf { it.isNotBlank() }
+                ?.let { appDb.bookSourceDao.getBookSourcePart(it)?.bookSourceName }
+                ?: getString(R.string.book_paragraph_comment_source_none)
+        }
         val sourceRow = TextView(this).apply {
             text = getString(R.string.book_paragraph_comment_source) + "：" + sourceName(config.paragraphCommentSource)
             textSize = 16f
@@ -1141,15 +1149,43 @@ class BookInfoActivity :
             val urls = ArrayList<String>()
             names.add(getString(R.string.book_paragraph_comment_source_none))
             urls.add("")
+            if (book.isLocal) {
+                names.add("起点直连（无需书源）")
+                urls.add(io.legado.app.model.webBook.QidianParagraphComment.BINDING_PREFIX)
+            }
             parts.forEach {
                 names.add(it.bookSourceName)
                 urls.add(it.bookSourceUrl)
             }
             selector(getString(R.string.book_paragraph_comment_source), names) { _, index ->
                 if (index in urls.indices) {
-                    sourceHolder[0] = urls[index].ifBlank { null }
-                    sourceRow.text = getString(R.string.book_paragraph_comment_source) +
-                        "：" + sourceName(sourceHolder[0])
+                    if (urls[index] == io.legado.app.model.webBook.QidianParagraphComment.BINDING_PREFIX) {
+                        val input = EditText(this).apply {
+                            hint = "输入起点 bookId，例如 1010868264"
+                            inputType = InputType.TYPE_CLASS_NUMBER
+                            setSingleLine(true)
+                        }
+                        AlertDialog.Builder(this)
+                            .setTitle("绑定起点作品")
+                            .setMessage("只需要输入一次起点作品 bookId，阅读本地书时会自动按章节标题匹配真实 chapterId。")
+                            .setView(input)
+                            .setNegativeButton(R.string.cancel, null)
+                            .setPositiveButton(R.string.ok) { _, _ ->
+                                val id = input.text.toString().trim()
+                                if (id.matches(Regex("\\d+"))) {
+                                    sourceHolder[0] = io.legado.app.model.webBook.QidianParagraphComment.BINDING_PREFIX + id
+                                    sourceRow.text = getString(R.string.book_paragraph_comment_source) +
+                                        "：" + sourceName(sourceHolder[0])
+                                } else {
+                                    toastOnUi("bookId 无效")
+                                }
+                            }
+                            .show()
+                    } else {
+                        sourceHolder[0] = urls[index].ifBlank { null }
+                        sourceRow.text = getString(R.string.book_paragraph_comment_source) +
+                            "：" + sourceName(sourceHolder[0])
+                    }
                 }
             }
         }
