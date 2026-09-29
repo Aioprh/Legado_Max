@@ -7,7 +7,6 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
-import android.widget.PopupMenu
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -21,7 +20,6 @@ import io.legado.app.data.entities.BookChapter
 import io.legado.app.databinding.DialogParagraphCommentBinding
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.lib.theme.ThemeStore
-import io.legado.app.lib.theme.primaryColor
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.utils.GSON
 import io.legado.app.utils.dpToPx
@@ -31,7 +29,6 @@ import io.legado.app.utils.jsonPath
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.stackTraceStr
-import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import io.legado.app.utils.visible
 import kotlinx.coroutines.Dispatchers
@@ -85,7 +82,9 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
     private val rawItems = mutableListOf<ParagraphCommentItem>()
     // 排序模式：实时=接口原始顺序；最新=神评论置顶+按时间由新到旧；回复最多=按回复数降序
     private enum class SortMode { REALTIME, NEWEST, HOT }
+    private enum class FilterMode { ALL, IMAGE, AUDIO }
     private var sortMode = SortMode.REALTIME
+    private var filterMode = FilterMode.ALL
     // 排序模式分页追加时临时抑制 onCurrentListChanged 触发的自动加载，
     // 防止 DiffUtil 重排后可见项被推到列表末尾造成链式加载
     private var suppressAutoLoad = false
@@ -107,7 +106,8 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         super.onStart()
         dialog?.window?.setGravity(Gravity.BOTTOM)
         val dm = resources.displayMetrics
-        setLayout(ViewGroup.LayoutParams.MATCH_PARENT, (dm.heightPixels * 0.9).toInt())
+        setLayout(ViewGroup.LayoutParams.MATCH_PARENT, (dm.heightPixels * 0.90).toInt())
+        dialog?.window?.setDimAmount(0.18f)
         // 弹窗显示期间启用 DiffUtil 增量更新，分页/排序重排时保持滚动位置；
         // 否则 setItems(list, callback) 会退化为 notifyDataSetChanged 全量刷新导致列表跳回顶部
         adapter.upResumed(true)
@@ -135,29 +135,24 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             setColor(ThemeStore.backgroundColor())
         }
         binding.run {
-            toolBar.setBackgroundColor(primaryColor)
-            toolBar.title = getString(R.string.paragraph_comment_title)
-            toolBar.setNavigationOnClickListener { dismiss() }
-            // 排序切换：齿轮图标弹出菜单选择 实时评论 / 最新评论 / 回复最多
-            tvSort.setOnClickListener { view -> showSortMenu(view) }
+            tvDismiss.setOnClickListener { dismiss() }
+            tvTabAll.setOnClickListener { filterMode = FilterMode.ALL; updateFilterTabs(); applySort() }
+            tvTabImage.setOnClickListener { filterMode = FilterMode.IMAGE; updateFilterTabs(); applySort() }
+            tvTabAudio.setOnClickListener { filterMode = FilterMode.AUDIO; updateFilterTabs(); applySort() }
+            tvSortDefault.setOnClickListener { sortMode = SortMode.REALTIME; updateSortTabs(); applySort() }
+            tvSortHot.setOnClickListener { sortMode = SortMode.HOT; updateSortTabs(); applySort() }
+            tvSortNewest.setOnClickListener { sortMode = SortMode.NEWEST; updateSortTabs(); applySort() }
+            tvInput.setOnClickListener { showMsg("当前段评暂不支持发布") }
+            tvVoice.setOnClickListener { showMsg("当前段评暂不支持录制配音") }
             recyclerView.layoutManager = LinearLayoutManager(requireContext())
             recyclerView.adapter = adapter
-            // 滚动 + 每次列表更新（含异步 DiffUtil 重排完成）都检查是否已到末尾，自动续接下一页。
-            // 排序模式下分页数据会重排到可视区上方，滚动事件可能不触发，必须靠列表更新回调兜底
             recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-                override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
-                    maybeLoadMore()
-                }
+                override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) { maybeLoadMore() }
             })
             adapter.onListChanged = { if (!suppressAutoLoad) maybeLoadMore() }
-            // 加载失败点击重试 / 加载更多点击翻页
             llFooter.setOnClickListener {
                 if (loading) return@setOnClickListener
-                // 仅在有更多（点击继续加载）或加载失败（点击重试）时可点；
-                // 真正的"没有更多了"点击不再触发加载
-                if (hasMore || footerState == FooterState.FAILED) {
-                    loadPage(page + 1)
-                }
+                if (hasMore || footerState == FooterState.FAILED) loadPage(page + 1)
             }
         }
         adapter.replyListener = object : ParagraphCommentAdapter.ReplyListener {
@@ -194,8 +189,12 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         // 起点段评保留全部排序（默认最新）
         if (!config.sortEnabled) {
             sortMode = SortMode.REALTIME
-            binding.tvSort.gone()
+            binding.sortBar.gone()
+        } else {
+            sortMode = SortMode.NEWEST
         }
+        updateFilterTabs()
+        updateSortTabs()
         if (config.commentsUrl.isNullOrBlank()) {
             AppLog.put("段评弹窗 commentsUrl 为空，无法加载", NoStackTraceException("commentsUrl 为空"))
             showMsg(getString(R.string.paragraph_comment_load_failed))
@@ -301,51 +300,50 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         SortMode.REALTIME -> Comparator { _, _ -> 0 }
     }
 
-    /** 顶栏齿轮图标点击弹排序菜单：实时评论 / 最新评论 / 回复最多 */
-    private fun showSortMenu(anchor: View) {
-        val menu = PopupMenu(requireContext(), anchor)
-        menu.menu.add(0, 2, 0, R.string.paragraph_comment_sort_realtime).apply {
-            isCheckable = true
-            isChecked = sortMode == SortMode.REALTIME
-        }
-        menu.menu.add(0, 1, 1, R.string.paragraph_comment_sort_newest).apply {
-            isCheckable = true
-            isChecked = sortMode == SortMode.NEWEST
-        }
-        menu.menu.add(0, 3, 2, R.string.paragraph_comment_sort_hot).apply {
-            isCheckable = true
-            isChecked = sortMode == SortMode.HOT
-        }
-        menu.setOnMenuItemClickListener { item ->
-            sortMode = when (item.itemId) {
-                1 -> SortMode.NEWEST
-                2 -> SortMode.REALTIME
-                else -> SortMode.HOT
-            }
-            applySort()
-            true
-        }
-        menu.show()
+    private fun updateFilterTabs() {
+        val allCount = if (total >= 0) total else rawItems.size.toLong()
+        val imageCount = rawItems.count { it.images.isNotEmpty() }
+        val audioCount = rawItems.count { it.audio.isNotBlank() }
+        binding.tvTabAll.text = "全部 $allCount"
+        binding.tvTabImage.text = "配图 $imageCount"
+        binding.tvTabAudio.text = "配音 $audioCount"
+        val theme = requireContext().theme
+        val primary = resources.getColor(R.color.primaryText, theme)
+        val secondary = resources.getColor(R.color.secondaryText, theme)
+        binding.tvTabAll.setTextColor(if (filterMode == FilterMode.ALL) primary else secondary)
+        binding.tvTabImage.setTextColor(if (filterMode == FilterMode.IMAGE) primary else secondary)
+        binding.tvTabAudio.setTextColor(if (filterMode == FilterMode.AUDIO) primary else secondary)
     }
 
-    /** 顶栏居中标题实时显示评论总数（总数未知时退化为已加载条数） */
-    private fun updateTitle() {
-        val count = if (total >= 0) total else rawItems.size.toLong()
-        binding.toolBar.title = if (count > 0) {
-            getString(R.string.paragraph_comment_total, count)
-        } else {
-            getString(R.string.paragraph_comment_title)
-        }
+    private fun updateSortTabs() {
+        val theme = requireContext().theme
+        val primary = resources.getColor(R.color.primaryText, theme)
+        val secondary = resources.getColor(R.color.secondaryText, theme)
+        binding.tvSortDefault.setTextColor(if (sortMode == SortMode.REALTIME) primary else secondary)
+        binding.tvSortHot.setTextColor(if (sortMode == SortMode.HOT) primary else secondary)
+        binding.tvSortNewest.setTextColor(if (sortMode == SortMode.NEWEST) primary else secondary)
     }
 
-    /** 切换排序模式后整表重排（以接口原始顺序 rawItems 为基准） */
-    private fun applySort() {
-        if (sortMode == SortMode.REALTIME) {
-            adapter.setItems(rawItems)
-        } else {
-            adapter.setItems(rawItems.sortedWith(sortComparator()))
-        }
+    private fun visibleItems(): List<ParagraphCommentItem> = when (filterMode) {
+        FilterMode.ALL -> rawItems
+        FilterMode.IMAGE -> rawItems.filter { it.images.isNotEmpty() }
+        FilterMode.AUDIO -> rawItems.filter { it.audio.isNotBlank() }
     }
+
+    private fun sortedVisibleItems(): List<ParagraphCommentItem> {
+        val items = visibleItems()
+        return if (sortMode == SortMode.REALTIME) items else items.sortedWith(sortComparator())
+    }
+
+    private fun sortComparator(): Comparator<ParagraphCommentItem> = when (sortMode) {
+        SortMode.NEWEST -> compareByDescending<ParagraphCommentItem> { it.isGod }.thenByDescending { it.time }
+        SortMode.HOT -> compareByDescending<ParagraphCommentItem> { it.replyCount }.thenByDescending { it.time }
+        SortMode.REALTIME -> Comparator { _, _ -> 0 }
+    }
+
+    private fun applySort() { adapter.setItems(sortedVisibleItems()) }
+
+    private fun updateTitle() { updateFilterTabs() }
 
     /** 追加下一页：实时模式直接末尾追加；排序模式用 DiffUtil 全量重排已加载数据。
      *  排序模式重排后，新评论可能插到列表上方，把原有可见项推到列表末尾，
@@ -353,12 +351,11 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
      *  修复：重排期间临时抑制 onCurrentListChanged 触发的自动加载，延迟 300ms 后用真实滚动位置判断是否需要续接。 */
     private fun appendPageItems(newItems: List<ParagraphCommentItem>) {
         if (newItems.isEmpty()) return
-        if (sortMode == SortMode.REALTIME) {
+        if (filterMode == FilterMode.ALL && sortMode == SortMode.REALTIME) {
             adapter.addItems(newItems)
         } else {
             suppressAutoLoad = true
-            adapter.setItems(rawItems.sortedWith(sortComparator()), commentDiff)
-            // 等 DiffUtil 异步分发完成、RecyclerView 重排落定后，用真实位置判断是否需要续接
+            adapter.setItems(sortedVisibleItems(), commentDiff)
             binding.recyclerView.postDelayed({
                 suppressAutoLoad = false
                 if (!isRemoving && !isDetached) maybeLoadMore()
