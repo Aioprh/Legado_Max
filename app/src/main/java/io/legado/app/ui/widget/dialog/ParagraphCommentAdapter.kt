@@ -114,7 +114,7 @@ class ParagraphCommentAdapter(context: Context) :
             bindAudio(binding.tvAudio, item)
 
             if (item.agree > 0) {
-                tvAgree.text = context.getString(R.string.paragraph_comment_like, item.agree)
+                tvAgree.text = "♡\n${item.agree}"
                 tvAgree.visible()
             } else {
                 tvAgree.gone()
