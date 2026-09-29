@@ -8,6 +8,7 @@ import androidx.annotation.Keep
 import com.bumptech.glide.load.resource.gif.GifDrawable
 import io.legado.app.model.ImageProvider
 import io.legado.app.model.ReadBook
+import io.legado.app.model.ParagraphBubbleRenderer
 import io.legado.app.ui.book.read.page.ContentTextView
 import io.legado.app.ui.book.read.page.entities.TextLine
 import io.legado.app.ui.book.read.page.entities.TextLine.Companion.emptyTextLine
@@ -110,6 +111,12 @@ data class ImageColumn(
     }
 
     override fun isTouch(x: Float): Boolean {
+        if (ParagraphBubbleRenderer.isBubbleSrc(src)) {
+            // 气泡实际绘制宽度大于占位字符宽度，扩大命中区域，避免点到气泡右侧无响应。
+            val bubbleWidth = ParagraphBubbleRenderer.getSize(src).width.toFloat()
+            return x > start - 4.dpToPx() &&
+                x < maxOf(end + 20.dpToPx(), start + bubbleWidth)
+        }
         return x > start && x < end + 20.dpToPx()
     }
 
