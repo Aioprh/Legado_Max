@@ -387,6 +387,9 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                     content = content,
                     images = images,
                     audio = audio,
+                    // 起点语音段评直接带 AudioUrl，这里预置播放地址，点击语音条即可播放，
+                    // 无需再走 audio 接口按评论 Id 二次查找
+                    audioUrl = audio.takeIf { it.startsWith("http") }.orEmpty(),
                     agree = readLong(map, config.fields.agree, DEFAULT_AGREES),
                     oppose = readLong(map, config.fields.oppose, DEFAULT_OPPOSES),
                     time = readTime(map, config.fields.time, DEFAULT_TIMES),

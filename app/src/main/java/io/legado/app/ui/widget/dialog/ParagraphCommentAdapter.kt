@@ -103,16 +103,12 @@ class ParagraphCommentAdapter(context: Context) :
                 tvFloor.gone()
             }
 
-            // 内容为空但有图/语音时显示占位提示
-            val text = formatContent(context, item.content)
-            tvContent.text = if (item.content.isBlank()) {
-                if (item.images.isNotEmpty() || item.audio.isNotBlank()) {
-                    context.getString(R.string.paragraph_comment_image)
-                } else {
-                    ""
-                }
-            } else {
-                text
+            // 内容为空但有图/语音时显示占位提示（语音用语音占位，避免显示成"图片段评"）
+            tvContent.text = when {
+                item.content.isNotBlank() -> formatContent(context, item.content)
+                item.images.isNotEmpty() -> context.getString(R.string.paragraph_comment_image)
+                item.audio.isNotBlank() -> context.getString(R.string.paragraph_comment_voice)
+                else -> ""
             }
             bindImages(binding.llImages, binding.ivImg1, binding.ivImg2, binding.ivImg3, item.images)
             bindAudio(binding.tvAudio, item)
@@ -199,15 +195,11 @@ class ParagraphCommentAdapter(context: Context) :
                         )
                         tvReplyTo.visible()
                     }
-                    val text = formatContent(context, reply.content)
-                    tvContent.text = if (reply.content.isBlank()) {
-                        if (reply.images.isNotEmpty() || reply.audio.isNotBlank()) {
-                            context.getString(R.string.paragraph_comment_image)
-                        } else {
-                            ""
-                        }
-                    } else {
-                        text
+                    tvContent.text = when {
+                        reply.content.isNotBlank() -> formatContent(context, reply.content)
+                        reply.images.isNotEmpty() -> context.getString(R.string.paragraph_comment_image)
+                        reply.audio.isNotBlank() -> context.getString(R.string.paragraph_comment_voice)
+                        else -> ""
                     }
                     bindImages(replyBinding.llImages, replyBinding.ivImg1, replyBinding.ivImg2, replyBinding.ivImg3, reply.images)
                     bindAudio(replyBinding.tvAudio, reply.audio)

@@ -4,6 +4,7 @@ import android.util.Base64
 import io.legado.app.constant.AppLog
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
+import io.legado.app.utils.GSON
 import io.legado.app.utils.jsonPath
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -28,6 +29,9 @@ object QidianParagraphComment {
 
     private const val API_HOST = "https://druidv6.if.qidian.com/argus/api/"
     private const val CATALOG_URL = "https://m.qidian.com/book/%s/catalog/"
+
+    /** 一次拉取的语音段评条数：该段语音通常几十条，取较大页大小尽量一页返回 */
+    private const val AUDIO_PAGE_SIZE = 100
 
     private val client = OkHttpClient.Builder().build()
     private val catalogCache = HashMap<String, Map<String, String>>()
@@ -256,6 +260,9 @@ object QidianParagraphComment {
      * 202 挑战页、无法取到 _csrfToken；改走 m.qidian.com/majax，与现有段评书源一致：
      * 带上随机 _csrfToken 及其对应 Cookie 即可通过校验。段落过滤参数是 paragraphId（不是 segmentId）。
      *
+     * majax 只返回文字/图片段评，不含语音段评；因此第 1 页会额外合并该段的语音评论
+     * （起点 App 签名接口 getparagraphsaudiocomments），否则弹窗里看不到语音评论。
+     *
      * 返回原始 JSON（结构 {"code":0,"data":{"list":[...],"total":N}}），
      * 由 [io.legado.app.ui.widget.dialog.ParagraphCommentDialog] 按 $.data.list / $.data.total 解析。
      */
@@ -270,7 +277,71 @@ object QidianParagraphComment {
             "&paragraphId=" + paragraphId +
             "&type=2" +
             "&_csrfToken=" + urlEncode(token)
-        return majaxGet(url, token)
+        val body = majaxGet(url, token) ?: return null
+        // 语音评论是独立接口，只在第 1 页合并一次
+        if (page != 1) return body
+        return mergeAudioComments(body, fetchParagraphAudioComments(bookId, chapterId, paragraphId))
+    }
+
+    /**
+     * 该段的语音评论列表（起点 App 签名接口）。
+     * roleId=0 表示全部角色；返回字段与 majax 段评兼容
+     * （Id/UserName/UserHeadIcon/IpLocation/AgreeAmount/CreateTime/ReviewCount/AudioUrl/AudioTime）。
+     */
+    private fun fetchParagraphAudioComments(
+        bookId: String,
+        chapterId: String,
+        paragraphId: Int
+    ): List<Any?> {
+        val params = "bookId=" + urlEncode(bookId) +
+            "&chapterId=" + urlEncode(chapterId) +
+            "&paragraphId=" + paragraphId +
+            "&pg=1&pz=" + AUDIO_PAGE_SIZE + "&roleId=0"
+        val response = signedGet("v1/chapterreview/getparagraphsaudiocomments", params)
+            ?: return emptyList()
+        return runCatching {
+            // 该接口会把同段的文字/图片段评一并带出（无 AudioUrl），只保留真正带语音地址的条目，
+            // 否则与 majax 的文字段评重复显示
+            jsonPath.parse(response).read<List<Any?>>("$.Data.DataList").orEmpty()
+                .filter { item ->
+                    val map = item as? Map<*, *> ?: return@filter false
+                    map.entries.firstOrNull { it.key?.toString().equals("AudioUrl", true) }
+                        ?.value?.toString()?.startsWith("http") == true
+                }
+        }.getOrElse {
+            AppLog.put("本地书段评: 语音段评解析失败《" + bookId + "/" + chapterId + "/" + paragraphId + "》", it)
+            emptyList()
+        }
+    }
+
+    /**
+     * 将语音评论并入 majax 列表（语音置于最前，便于直接看到）。
+     * 总数同步加上语音条数：弹窗用"已加载条数 < 总数"判断是否还有下一页，
+     * 不加会让语音条数顶掉末尾若干条文字段评。
+     */
+    private fun mergeAudioComments(body: String, audioItems: List<Any?>): String {
+        if (audioItems.isEmpty()) return body
+        return runCatching {
+            val json = jsonPath.parse(body)
+            val textItems = json.read<List<Any?>>("$.data.list").orEmpty()
+            val total = runCatching { (json.read<Any>("$.data.total") as? Number)?.toLong() }
+                .getOrNull() ?: -1L
+            val merged = ArrayList<Any?>(textItems.size + audioItems.size)
+            merged.addAll(audioItems)
+            merged.addAll(textItems)
+            GSON.toJson(
+                mapOf(
+                    "code" to 0,
+                    "data" to mapOf(
+                        "list" to merged,
+                        "total" to if (total >= 0) total + audioItems.size else total
+                    )
+                )
+            )
+        }.getOrElse {
+            AppLog.put("本地书段评: 语音段评合并失败", it)
+            body
+        }
     }
 
     /** 起点 majax 反爬参数：优先复用已登录 Cookie，否则生成随机 _csrfToken（服务端只校验其存在） */
