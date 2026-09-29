@@ -73,6 +73,12 @@ object LocalParagraphComment {
      */
     suspend fun injectIfNeeded(book: Book, chapter: BookChapter, content: String): String {
         val sourceUrl = sourceUrlFor(book) ?: return content
+
+        // 起点直连模式：完全绕过 BookSource，适用于 TXT/EPUB 等本地书。
+        if (QidianParagraphComment.isBinding(sourceUrl)) {
+            return QidianParagraphComment.inject(book, chapter, content)
+        }
+
         val source = appDb.bookSourceDao.getBookSource(sourceUrl)?.takeIf { it.enabled }
             ?: return content
         val adapter = adapters.firstOrNull { it.match(source) } ?: return content
