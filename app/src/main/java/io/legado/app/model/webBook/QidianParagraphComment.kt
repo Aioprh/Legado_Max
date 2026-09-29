@@ -27,7 +27,6 @@ object QidianParagraphComment {
 
     private const val API_HOST = "https://druidv6.if.qidian.com/argus/api/"
     private const val CATALOG_URL = "https://m.qidian.com/book/%s/catalog/"
-    private const val CHAPTER_PAGE = "https://vipreader.qidian.com/chapter/%s/%s"
 
     private val client = OkHttpClient.Builder().build()
     private val catalogCache = HashMap<String, Map<String, String>>()
