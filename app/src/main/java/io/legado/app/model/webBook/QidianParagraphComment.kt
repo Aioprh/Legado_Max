@@ -226,10 +226,10 @@ object QidianParagraphComment {
         if (count <= 0 || paragraph.contains("dp:")) return paragraph
 
         val pclick = "java.showQidianParagraphComments('" + bookId + "','" + chapterId + "'," + paragraphId + ");"
-        val display = if (count > 99) "99+" else count.toString()
-        val option = "{\\\"pclick\\\":\\\"" + pclick + "\\\",\\\"status\\\":\\\"normal\\\",\\\"displayText\\\":\\\"" + display + "\\\"}"
-        val bubble = "<img src=\\\"dp:" + count + "," + option + "\\\">"
-
+        // dp: 是阅读器内部段评协议；src 属性和 JSON 不能带反斜杠转义，
+        // 否则阅读器的 imgPattern 会提前截断 src，导致整个 img 标签泄漏到正文。
+        val option = """{"pclick":"$pclick","status":"normal","displayText":"$display"}"""
+        val bubble = """<img src="dp:$count,$option">"""
         return if (paragraph.contains("</p>", true)) {
             paragraph.replaceFirst(Regex("</p>", RegexOption.IGNORE_CASE), bubble + "</p>")
         } else paragraph + bubble
