@@ -1708,6 +1708,29 @@ class ReadBookActivity : BaseReadBookActivity(),
     }
 
     override fun clickImg(click: String, src: String) {
+        // 起点直连段评没有 BookSource，不能走普通图片 click 的 source.evalJS 流程。
+        // 直接从 pclick 中取出 bookId/chapterId/paragraphId，打开原生段评弹窗。
+        if (ParagraphBubbleRenderer.isBubbleSrc(src) && click.contains("showQidianParagraphComments", true)) {
+            val regex = Regex("""showQidianParagraphComments\s*\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\s*,\s*(\d+)\s*\)""", RegexOption.IGNORE_CASE)
+            val match = regex.find(click)
+            if (match != null) {
+                val bookId = match.groupValues[1]
+                val chapterId = match.groupValues[2]
+                val paragraphId = match.groupValues[3].toIntOrNull()
+                if (paragraphId != null) {
+                    runOnUiThread {
+                        showDialogFragment(
+                            ParagraphCommentDialog(bookId, chapterId, paragraphId, true)
+                        )
+                    }
+                    return
+                }
+            }
+            AppLog.put("起点段评点击脚本解析失败: $click")
+            return
+        }
+
+
         Coroutine.async(lifecycleScope,IO) {
             val book = ReadBook.book ?: return@async
             val chapter = appDb.bookChapterDao.getChapter(book.bookUrl, ReadBook.durChapterIndex) ?: throw Exception("no find chapter")
