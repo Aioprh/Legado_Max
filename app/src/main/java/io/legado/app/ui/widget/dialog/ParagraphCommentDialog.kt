@@ -107,7 +107,8 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         super.onStart()
         dialog?.window?.setGravity(Gravity.BOTTOM)
         val dm = resources.displayMetrics
-        setLayout(ViewGroup.LayoutParams.MATCH_PARENT, (dm.heightPixels * 0.90).toInt())
+        // 半屏底部面板：保留足够的评论浏览空间，同时露出正文背景。
+        setLayout(ViewGroup.LayoutParams.MATCH_PARENT, (dm.heightPixels * 0.56).toInt())
         dialog?.window?.setDimAmount(0.18f)
         // 弹窗显示期间启用 DiffUtil 增量更新，分页/排序重排时保持滚动位置；
         // 否则 setItems(list, callback) 会退化为 notifyDataSetChanged 全量刷新导致列表跳回顶部
@@ -143,8 +144,6 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             tvSortDefault.setOnClickListener { sortMode = SortMode.REALTIME; updateSortTabs(); applySort() }
             tvSortHot.setOnClickListener { sortMode = SortMode.HOT; updateSortTabs(); applySort() }
             tvSortNewest.setOnClickListener { sortMode = SortMode.NEWEST; updateSortTabs(); applySort() }
-            tvInput.setOnClickListener { showMsg("当前段评暂不支持发布") }
-            tvVoice.setOnClickListener { showMsg("当前段评暂不支持录制配音") }
             recyclerView.layoutManager = LinearLayoutManager(requireContext())
             recyclerView.adapter = adapter
             recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
