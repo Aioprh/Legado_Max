@@ -1191,29 +1191,41 @@ class BookInfoActivity :
             setPadding(padding, padding / 2, padding, 0)
         }
         val input = EditText(this).apply {
-            hint = "输入书名或粘贴起点书籍链接"
+            hint = "输入书名或粘贴起点作品链接"
             setSingleLine(true)
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
         }
         layout.addView(input)
 
-        val bind = { value: String ->
-            val id = io.legado.app.model.webBook.QidianParagraphComment.extractBookId(value)
-            if (id != null) {
-                sourceHolder[0] = io.legado.app.model.webBook.QidianParagraphComment.BINDING_PREFIX + id
-                sourceRow.text = getString(R.string.book_paragraph_comment_source) + "：" + sourceName(sourceHolder[0])
-                toastOnUi("已绑定起点作品：" + id)
-                true
-            } else false
+        fun bind(bookId: String): Boolean {
+            if (!bookId.matches(Regex("\\d{5,}"))) return false
+            sourceHolder[0] = io.legado.app.model.webBook.QidianParagraphComment.BINDING_PREFIX + bookId
+            sourceRow.text = getString(R.string.book_paragraph_comment_source) + "：" + sourceName(sourceHolder[0])
+            toastOnUi("已绑定起点作品：" + bookId)
+            return true
+        }
+
+        fun resolveAndBind(value: String) {
+            lifecycleScope.launch {
+                val id = io.legado.app.model.webBook.QidianParagraphComment.resolveBookId(value)
+                if (id != null && bind(id)) {
+                    return@launch
+                }
+                toastOnUi("没有识别到有效的起点作品链接")
+            }
         }
 
         AlertDialog.Builder(this)
             .setTitle("绑定起点作品")
-            .setMessage("可以输入书名搜索，也可以直接粘贴起点作品链接。选中作品后会自动保存 BookId。")
+            .setMessage("可以输入书名搜索，也可以直接粘贴起点作品链接。支持起点 H5 分享链接，会自动解析分享链接对应的 BookId。")
             .setView(layout)
             .setNeutralButton("粘贴链接") { _, _ ->
                 val text = input.text.toString().trim()
-                if (!bind(text)) toastOnUi("没有识别到有效的起点作品链接")
+                if (text.isBlank()) {
+                    toastOnUi("请输入起点作品链接")
+                } else {
+                    resolveAndBind(text)
+                }
             }
             .setNegativeButton(R.string.cancel, null)
             .setPositiveButton("搜索") { _, _ ->
@@ -1222,17 +1234,16 @@ class BookInfoActivity :
                     toastOnUi("请输入书名或起点链接")
                     return@setPositiveButton
                 }
-                val directId = io.legado.app.model.webBook.QidianParagraphComment.extractBookId(keyword)
-                if (directId != null) {
-                    bind(directId)
-                    return@setPositiveButton
-                }
                 lifecycleScope.launch {
+                    val directId = io.legado.app.model.webBook.QidianParagraphComment.resolveBookId(keyword)
+                    if (directId != null && bind(directId)) {
+                        return@launch
+                    }
                     val results = withContext(IO) {
                         io.legado.app.model.webBook.QidianParagraphComment.searchBooks(keyword)
                     }
                     if (results.isEmpty()) {
-                        toastOnUi("没有找到起点作品，可直接粘贴起点书籍链接重试")
+                        toastOnUi("没有找到起点作品，可直接粘贴起点 H5 分享链接重试")
                         return@launch
                     }
                     val labels = results.map {
