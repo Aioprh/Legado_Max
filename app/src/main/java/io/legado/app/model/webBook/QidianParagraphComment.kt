@@ -133,7 +133,7 @@ object QidianParagraphComment {
                 ?: return@runCatching emptyMap<String, String>()
             val pageContext = element.data().ifBlank { element.html() }
             val chapters = jsonPath.parse(pageContext)
-                .read<List<Any?>>("$.pageProps.pageData.vs[*].cs[*]")
+                .read<List<Any?>>("$.pageContext.pageProps.pageData.vs[*].cs[*]")
 
             val map = LinkedHashMap<String, String>()
             val cores = HashMap<String, MutableList<String>>()
