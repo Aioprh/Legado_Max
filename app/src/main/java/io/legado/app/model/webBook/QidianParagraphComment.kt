@@ -16,6 +16,7 @@ import java.security.MessageDigest
 import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
+import kotlin.random.Random
 
 /**
  * 起点直连段评适配器。
@@ -249,57 +250,62 @@ object QidianParagraphComment {
 
 
     /**
-     * 原生段评详情接口。起点网页端 reviewList 使用 segmentId 对应段落，
-     * page/pageSize 用于分页；_csrfToken 从起点章节页动态取得。
+     * 段落评论列表（起点手机端 majax 接口）。
+     *
+     * 网页端（www.qidian.com/ajax/chapterReview/reviewList）受风控保护，直接请求只会拿到
+     * 202 挑战页、无法取到 _csrfToken；改走 m.qidian.com/majax，与现有段评书源一致：
+     * 带上随机 _csrfToken 及其对应 Cookie 即可通过校验。段落过滤参数是 paragraphId（不是 segmentId）。
+     *
+     * 返回原始 JSON（结构 {"code":0,"data":{"list":[...],"total":N}}），
+     * 由 [io.legado.app.ui.widget.dialog.ParagraphCommentDialog] 按 $.data.list / $.data.total 解析。
      */
     fun fetchParagraphReviews(bookId: String, chapterId: String, paragraphId: Int, page: Int, pageSize: Int): String? {
         if (paragraphId <= 0) return null
-        return runCatching {
-            val chapterUrl = "https://www.qidian.com/chapter/" + bookId + "/" + chapterId + "/"
-            val pageHtml = qidianHttpGet(chapterUrl) ?: return@runCatching null
-            val token = Regex("""["']?_csrfToken["']?\s*[:=]\s*["']([^"']+)["']""")
-                .find(pageHtml)?.groupValues?.get(1).orEmpty()
-                if (token.isBlank()) {
-                    Regex("""_csrfToken=([^&"'\\s]+)""").find(pageHtml)?.groupValues?.get(1).orEmpty()
-                }
-            if (token.isBlank()) return@runCatching null
-
-            val summaryUrl = "https://www.qidian.com/ajax/chapterReview/reviewSummary" +
-                "?bookId=" + urlEncode(bookId) +
-                "&chapterId=" + urlEncode(chapterId) +
-                "&_csrfToken=" + urlEncode(token)
-            val summary = qidianHttpGet(summaryUrl) ?: return@runCatching null
-            val segmentId = runCatching {
-                val list = jsonPath.parse(summary).read<List<Any?>>("$.data.list") ?: emptyList()
-                list.mapNotNull { it as? Map<*, *> }.firstOrNull { item ->
-                    firstString(item, "segmentId", "SegmentId") == paragraphId.toString()
-                }?.let { firstString(it, "segmentId", "SegmentId") }
-            }.getOrNull() ?: paragraphId.toString()
-
-            val reviewUrl = "https://www.qidian.com/ajax/chapterReview/reviewList" +
-                "?bookId=" + urlEncode(bookId) +
-                "&chapterId=" + urlEncode(chapterId) +
-                "&page=" + page +
-                "&pageSize=" + pageSize +
-                "&segmentId=" + urlEncode(segmentId) +
-                "&type=2" +
-                "&_csrfToken=" + urlEncode(token)
-            qidianHttpGet(reviewUrl)
-        }.getOrNull()
+        val token = csrfToken()
+        val url = "https://m.qidian.com/majax/chapterReview/reviewList" +
+            "?bookId=" + urlEncode(bookId) +
+            "&chapterId=" + urlEncode(chapterId) +
+            "&page=" + page +
+            "&pageSize=" + pageSize +
+            "&paragraphId=" + paragraphId +
+            "&type=2" +
+            "&_csrfToken=" + urlEncode(token)
+        return majaxGet(url, token)
     }
 
-    private fun qidianHttpGet(url: String): String? = runCatching {
+    /** 起点 majax 反爬参数：优先复用已登录 Cookie，否则生成随机 _csrfToken（服务端只校验其存在） */
+    private fun csrfToken(): String {
+        val existing = runCatching {
+            io.legado.app.help.http.CookieStore.getKey("https://m.qidian.com", "_csrfToken")
+        }.getOrDefault("")
+        if (!existing.isNullOrBlank()) return existing
+        val chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        return (1..40).map { chars[Random.nextInt(chars.length)] }.joinToString("")
+    }
+
+    private fun majaxGet(url: String, token: String): String? = runCatching {
         val request = Request.Builder()
             .url(url)
-            .header("User-Agent", USER_AGENT)
+            .header("User-Agent", WEB_USER_AGENT)
             .header("Accept", "application/json, text/plain, */*")
-            .header("Referer", "https://www.qidian.com/")
+            .header("Referer", "https://m.qidian.com/")
+            .header("Cookie", "qd_client_id=$token; _csrfToken=$token")
             .build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) return@use null
-            response.body?.string()?.trimStart('\uFEFF')
+            val body = response.body?.string()?.trimStart('\uFEFF') ?: return@use null
+            val code = runCatching { jsonPath.parse(body).read<Any>("$.code") as? Number }
+                .getOrNull()?.toInt()
+            if (code != null && code != 0) {
+                AppLog.putReaderDebug("起点段评列表接口返回失败 code=$code: " + url)
+                return@use null
+            }
+            body
         }
-    }.getOrNull()
+    }.getOrElse {
+        AppLog.put("起点段评列表请求失败: " + url, it)
+        null
+    }
 
     private fun httpGet(url: String): String? = runCatching {
         val request = Request.Builder()
@@ -435,4 +441,8 @@ object QidianParagraphComment {
 
     private const val USER_AGENT =
         "Mozilla/mobile QDReaderAndroid/7.9.378/1436/1000009/Android"
+
+    /** m.qidian.com/majax 为网页接口，需要浏览器 UA */
+    private const val WEB_USER_AGENT =
+        "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
 }

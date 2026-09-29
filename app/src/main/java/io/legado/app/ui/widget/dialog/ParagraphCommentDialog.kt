@@ -253,9 +253,10 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                 // 用"条数>=页大小 && 已加载<总数"推断会提前显示"没有更多了"，
                 // 而接口的 hasNext 标志是权威的（站点自己的前端也用它）。
                 val hasNextFlag = body?.let { parseHasNext(it) }
+                // 已知总数时以总数为准：起点 majax 每页条数不固定（可能 < pageSize），
+                // 只按"整页"推断会提前显示"没有更多"；总数未知时才退回整页推断
                 hasMore = hasNextFlag ?: (items.isNotEmpty() &&
-                    items.size >= config.pageSize &&
-                    (total < 0 || rawItems.size < total))
+                    if (total >= 0) rawItems.size < total else items.size >= config.pageSize)
                 if (adapter.isEmpty()) {
                     showMsg(getString(R.string.paragraph_comment_empty))
                     updateFooter(FooterState.NONE)
@@ -799,6 +800,12 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         if (isEssence != null) {
             isEssence.toString().toBooleanStrictOrNull()?.let { return it }
         }
+        // 起点手机端 majax 段评用 EssenceStatus(boolean) 表示神评
+        val essenceStatus = findKey(map, "EssenceStatus")
+        if (essenceStatus is Boolean) return essenceStatus
+        if (essenceStatus != null) {
+            essenceStatus.toString().toBooleanStrictOrNull()?.let { return it }
+        }
         return false
     }
 
@@ -808,7 +815,8 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
      * 番茄主楼评论无 Id 字段，依赖 comment-replies 接口请求不到，必须用内嵌回复兜底。
      */
     private fun readInlineReplies(map: Map<*, *>): List<ParagraphReplyItem> {
-        val v = findKey(map, "Replies") ?: findKey(map, "replies") ?: return emptyList()
+        // replyList：起点手机端 majax 段评的主楼内嵌回复数组
+        val v = findKey(map, "Replies") ?: findKey(map, "replyList") ?: return emptyList()
         val list: List<*> = when (v) {
             is List<*> -> v
             is String -> runCatching {
@@ -942,7 +950,7 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         private val DEFAULT_NICKNAMES = listOf("$.NickName", "$.UserName", "$.Name", "$.Uname", "$.user_name", "$.nickname", "$.comment_user.user_name", "$.comment_user.nickname", "$.user.nickname", "$.user.name", "$.user_info.user_name")
         private val DEFAULT_AVATARS = listOf("$.UserHeadIcon", "$.UserPhoto", "$.Avatar", "$.HeadIcon", "$.Photo", "$.user_avatar", "$.avatar", "$.comment_user.user_avatar", "$.comment_user.avatar", "$.user.avatar", "$.user.avatar_url", "$.user_info.user_avatar")
         private val DEFAULT_LEVELS = listOf("$.ShowTag", "$.Level", "$.UserLevel", "$.Grade")
-        private val DEFAULT_IPS = listOf("$.IpLocation", "$.Ip", "$.Location", "$.Region", "$.ip_location", "$.ip_address")
+        private val DEFAULT_IPS = listOf("$.IpLocation", "$.IpAddress", "$.Ip", "$.Location", "$.Region", "$.ip_location", "$.ip_address")
         // 内容兜底必须含小写 text/content：同人小说网（pl.aadcn.cn）评论正文是 text，若 fields 未携带路径也能读到
         private val DEFAULT_CONTENTS = listOf("$.Content", "$.Text", "$.Msg", "$.ImageMeaning", "$.text", "$.content", "$.body", "$.comment_content", "$.comment_text", "$.review_content")
         private val DEFAULT_AGREES = listOf("$.AgreeAmount", "$.AgreeCount", "$.LikeCount", "$.LikeAmount", "$.Up", "$.digg_count", "$.like_count", "$.comment_like_count", "$.agree_count")
@@ -952,8 +960,8 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             """(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?(?:\.\d+)?(?:\s*(?:Z|[+-]\d{1,2}:?\d{0,2}))?)?"""
         )
         private val DEFAULT_FLOORS = listOf("$.Floor", "$.FloorNum", "$.FloorNumber", "$.floor")
-        private val DEFAULT_REPLY_COUNTS = listOf("$.ReviewCount", "$.ReplyCount", "$.ReplyNum", "$.SubCount", "$.reply_count", "$.comment_count", "$.replyCount", "$.child_count")
-        private val DEFAULT_REPLY_TOS = listOf("$.RelatedUser", "$.ReplyToUser", "$.ToUserName", "$.ReplyName", "$.related_user", "$.reply_to", "$.to_user_name", "$.reply_user_name")
+        private val DEFAULT_REPLY_COUNTS = listOf("$.ReviewCount", "$.RootReviewReplyCount", "$.ReplyCount", "$.ReplyNum", "$.SubCount", "$.reply_count", "$.comment_count", "$.replyCount", "$.child_count")
+        private val DEFAULT_REPLY_TOS = listOf("$.RelatedUser", "$.QuoteNickName", "$.ReplyToUser", "$.ToUserName", "$.ReplyName", "$.related_user", "$.reply_to", "$.to_user_name", "$.reply_user_name")
 
         /** 评论图片字段候选（大小写不敏感匹配，ImgInfo 为起点系真实字段；不含 FrameUrl——那是用户头像框，不是配图） */
         private val IMAGE_FIELD_CANDIDATES = listOf(
