@@ -912,8 +912,10 @@ object ReadBook : CoroutineScope by MainScope() {
                 book.getUseReplaceRule(),
                 replaceBook = book.toReplaceBook()
             )
+            val paragraphCommentContent = LocalParagraphComment.injectIfNeeded(book, chapter, content)
+            ensureActive()
             val contents = contentProcessor
-                .getContent(book, chapter, content, includeTitle = false)
+                .getContent(book, chapter, paragraphCommentContent, includeTitle = false)
             ensureActive()
             val textChapter = ChapterProvider.getTextChapterAsync(
                 this, book, chapter, displayTitle, contents, simulatedChapterSize
@@ -1001,8 +1003,9 @@ object ReadBook : CoroutineScope by MainScope() {
                 book.getUseReplaceRule(),
                 replaceBook = book.toReplaceBook()
             )
+            val paragraphCommentContent = LocalParagraphComment.injectIfNeeded(book, chapter, content)
             val contents = contentProcessor
-                .getContent(book, chapter, content, includeTitle = false)
+                .getContent(book, chapter, paragraphCommentContent, includeTitle = false)
             val textChapter = ChapterProvider.getTextChapterAsync(
                 this@ReadBook, book, chapter, displayTitle, contents, simulatedChapterSize
             )
@@ -1084,9 +1087,10 @@ object ReadBook : CoroutineScope by MainScope() {
                 book.getUseReplaceRule(),
                 replaceBook = book.toReplaceBook()
             )
-            val contents = contentProcessor
-                .getContent(book, chapter, content, includeTitle = false)
+            val paragraphCommentContent = LocalParagraphComment.injectIfNeeded(book, chapter, content)
             ensureActive()
+            val contents = contentProcessor
+                .getContent(book, chapter, paragraphCommentContent, includeTitle = false)
             val textChapter = ChapterProvider.getTextChapterAsync(
                 this, book, chapter, displayTitle, contents, simulatedChapterSize
             )
