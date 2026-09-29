@@ -41,34 +41,60 @@ object QidianParagraphComment {
 
     data class SearchResult(val bookId: String, val name: String, val author: String = "")
 
-    /** 从普通起点书籍链接中提取作品 ID。 */
+    /** 从普通起点书籍链接中提取作品 ID。 */ 
     fun extractBookId(value: String?): String? {
         val text = value?.trim().orEmpty()
         if (text.isEmpty()) return null
-        if (text.matches(Regex("\\\\d+"))) return text
+        if (text.matches(Regex("\\d+"))) return text
+
         val decoded = runCatching { URLDecoder.decode(text, "UTF-8") }.getOrDefault(text)
         val patterns = listOf(
-            Regex("(?:qidian\\\\.com|book\\\\.qidian\\\\.com|m\\\\.qidian\\\\.com)[^\\\\d]{0,80}(?:info|book)[^\\\\d]{0,20}(\\\\d{5,})", RegexOption.IGNORE_CASE),
-            Regex("/(?:info|book)/(\\\\d{5,})(?:/|[?#]|$)", RegexOption.IGNORE_CASE),
-            Regex("[?&](?:bookId|bookid|bid)=(\\\\d{5,})", RegexOption.IGNORE_CASE),
-            Regex("""["']?(?:bookId|bookid|book_id|bid)["']?\s*[:=]\s*["']?(\d{5,})""", RegexOption.IGNORE_CASE)
+            Regex(
+                "(?:qidian\\.com|book\\.qidian\\.com|m\\.qidian\\.com)[^\\d]{0,80}(?:info|book)[^\\d]{0,20}(\\d{5,})",
+                RegexOption.IGNORE_CASE
+            ),
+            Regex(
+                "/(?:info|book)/(\\d{5,})(?:/|[?#]|$)",
+                RegexOption.IGNORE_CASE
+            ),
+            Regex(
+                "[?&](?:bookId|bookid|bid)=(\\d{5,})",
+                RegexOption.IGNORE_CASE
+            ),
+            Regex(
+                """["']?(?:bookId|bookid|book_id|bid)["']?\s*[:=]\s*["']?(\d{5,})""",
+                RegexOption.IGNORE_CASE
+            )
         )
-        return patterns.asSequence().mapNotNull { it.find(decoded)?.groupValues?.getOrNull(1) }.firstOrNull()
+        return patterns.asSequence()
+            .mapNotNull { it.find(decoded)?.groupValues?.getOrNull(1) }
+            .firstOrNull()
     }
 
     /**
      * 解析起点 H5 分享作品链接。
+     *
      * share-link?id=... 中的数字是分享链接 ID，不是作品 bookId。
-     * 请求分享页后，从最终 URL、Location、canonical/og:url、链接及内嵌数据中寻找真正的 bookId。
+     * 按分享链接转换工具的实际流程：
+     *   1. GET share-link；
+     *   2. 跟随 HTTP 30x；
+     *   3. 优先从最终落地 URL / 重定向 Location 提取 bookId；
+     *   4. 最后才从 HTML 中提取 bookId。
      */
     suspend fun resolveBookId(value: String?): String? = withContext(Dispatchers.IO) {
+        // 普通 bookId / 书籍 URL 直接处理，避免无意义的网络请求。
         extractBookId(value)?.let { return@withContext it }
+
         val text = value?.trim().orEmpty()
+        if (text.isEmpty()) return@withContext null
+
         val shareId = Regex(
-            """https?://h5\\.if\\.qidian\\.com/h5/share-link\\?id=(\\d{5,})""",
+            """https?://h5\.if\.qidian\.com/h5/share-link(?:\?|%3F)id=(\d{5,})""",
             RegexOption.IGNORE_CASE
         ).find(text)?.groupValues?.getOrNull(1) ?: return@withContext null
+
         val shareUrl = "https://h5.if.qidian.com/h5/share-link?id=" + shareId
+
         runCatching {
             val request = Request.Builder()
                 .url(shareUrl)
@@ -76,23 +102,50 @@ object QidianParagraphComment {
                 .header("Accept", "text/html,application/xhtml+xml,application/json")
                 .header("Referer", "https://h5.if.qidian.com/")
                 .build()
+
+            // OkHttp 默认跟随重定向；response.request.url 即最终落地 URL。
             client.newCall(request).execute().use { response ->
                 val candidates = ArrayList<String>()
+
+                // 最终 URL
                 candidates += response.request.url.toString()
-                response.header("Location")?.let { candidates += it }
+
+                // 兼容没有被 OkHttp 自动消费掉的 Location
+                response.header("Location")?.let(candidates::add)
+
+                // 兼容 302 -> 301 -> 最终页面的多级重定向链。
+                var previous = response.priorResponse
+                while (previous != null) {
+                    candidates += previous.request.url.toString()
+                    previous.header("Location")?.let(candidates::add)
+                    previous = previous.priorResponse
+                }
+
+                // 与 Python 工具一致：重定向 URL 都没有 bookId 时，再检查响应 HTML。
                 val body = response.body?.string().orEmpty()
                 if (body.isNotBlank()) {
                     candidates += body
                     val doc = Jsoup.parse(body)
+
                     doc.select("meta[content],a[href],link[href]").forEach { element ->
-                        element.attr("content").takeIf { it.isNotBlank() }?.let(candidates::add)
-                        element.attr("href").takeIf { it.isNotBlank() }?.let(candidates::add)
+                        element.attr("content")
+                            .takeIf { it.isNotBlank() }
+                            ?.let(candidates::add)
+                        element.attr("href")
+                            .takeIf { it.isNotBlank() }
+                            ?.let(candidates::add)
                     }
+
                     doc.select("script").forEach { script ->
-                        script.data().takeIf { it.isNotBlank() }?.let(candidates::add)
+                        script.data()
+                            .takeIf { it.isNotBlank() }
+                            ?.let(candidates::add)
                     }
                 }
-                candidates.asSequence().mapNotNull { extractBookId(it) }.firstOrNull()
+
+                candidates.asSequence()
+                    .mapNotNull { extractBookId(it) }
+                    .firstOrNull()
             }
         }.getOrNull()
     }
