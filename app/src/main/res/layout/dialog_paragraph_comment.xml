@@ -4,93 +4,38 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:clipToPadding="false">
 
-    <androidx.appcompat.widget.Toolbar
-        android:id="@+id/tool_bar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:theme="?attr/actionBarStyle"
-        app:navigationIcon="@drawable/ic_arrow_back"
-        app:popupTheme="@style/AppTheme.PopupOverlay"
-        app:title="@string/paragraph_comment_title"
-        app:titleTextAppearance="@style/ToolbarTitle">
+    <View android:layout_width="34dp" android:layout_height="4dp" android:layout_gravity="center_horizontal" android:layout_marginTop="8dp" android:layout_marginBottom="4dp" android:background="@drawable/bg_tag" />
 
-        <!-- 排序切换：齿轮图标，点击弹出 实时评论/最新评论/回复最多 菜单 -->
-        <ImageButton
-            android:id="@+id/tv_sort"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="end"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/paragraph_comment_sort"
-            android:paddingStart="8dp"
-            android:paddingEnd="16dp"
-            android:scaleType="fitCenter"
-            android:src="@drawable/ic_settings"
-            app:tint="@color/primaryText" />
-
-    </androidx.appcompat.widget.Toolbar>
-
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recycler_view"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            tools:ignore="SpeakableTextPresentCheck" />
-
-        <io.legado.app.ui.widget.anima.RotateLoading
-            android:id="@+id/rotate_loading"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:layout_gravity="center"
-            android:layout_margin="6dp"
-            android:visibility="gone"
-            app:loading_width="2dp" />
-
-        <TextView
-            android:id="@+id/tv_msg"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:padding="24dp"
-            android:textColor="@color/secondaryText"
-            android:visibility="gone"
-            tools:ignore="SpeakableTextPresentCheck" />
-
-    </FrameLayout>
-
-    <!-- 底部加载状态条：加载更多 / 没有更多 / 加载失败重试 -->
-    <LinearLayout
-        android:id="@+id/ll_footer"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:orientation="horizontal"
-        android:padding="10dp"
-        android:visibility="gone"
-        tools:visibility="visible">
-
-        <io.legado.app.ui.widget.anima.RotateLoading
-            android:id="@+id/footer_rotate_loading"
-            android:layout_width="18dp"
-            android:layout_height="18dp"
-            android:layout_marginEnd="6dp"
-            app:loading_width="2dp"
-            tools:visibility="visible" />
-
-        <TextView
-            android:id="@+id/footer_tv_msg"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/paragraph_comment_loading"
-            android:textColor="@color/secondaryText"
-            android:textSize="12sp" />
-
+    <LinearLayout android:layout_width="match_parent" android:layout_height="54dp" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="24dp" android:paddingEnd="20dp">
+        <TextView android:id="@+id/tv_tab_all" android:layout_width="wrap_content" android:layout_height="match_parent" android:gravity="center_vertical" android:text="全部" android:textColor="?android:attr/textColorPrimary" android:textSize="20sp" android:textStyle="bold" />
+        <TextView android:id="@+id/tv_tab_image" android:layout_width="wrap_content" android:layout_height="match_parent" android:layout_marginStart="26dp" android:gravity="center_vertical" android:text="配图" android:textColor="@color/secondaryText" android:textSize="18sp" />
+        <TextView android:id="@+id/tv_tab_audio" android:layout_width="wrap_content" android:layout_height="match_parent" android:layout_marginStart="26dp" android:gravity="center_vertical" android:text="配音" android:textColor="@color/secondaryText" android:textSize="18sp" />
+        <Space android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+        <TextView android:id="@+id/tv_dismiss" android:layout_width="40dp" android:layout_height="40dp" android:gravity="center" android:text="×" android:textColor="@color/secondaryText" android:textSize="28sp" android:contentDescription="关闭" />
     </LinearLayout>
 
+    <LinearLayout android:id="@+id/sort_bar" android:layout_width="match_parent" android:layout_height="40dp" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="24dp" android:paddingEnd="24dp">
+        <TextView android:id="@+id/tv_sort_default" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="默认" android:textColor="?android:attr/textColorPrimary" android:textSize="14sp" android:textStyle="bold" />
+        <TextView android:id="@+id/tv_sort_hot" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="22dp" android:text="热门" android:textColor="@color/secondaryText" android:textSize="14sp" />
+        <TextView android:id="@+id/tv_sort_newest" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="22dp" android:text="最新" android:textColor="@color/secondaryText" android:textSize="14sp" />
+    </LinearLayout>
+
+    <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+        <androidx.recyclerview.widget.RecyclerView android:id="@+id/recycler_view" android:layout_width="match_parent" android:layout_height="match_parent" android:clipToPadding="false" android:paddingTop="4dp" android:paddingBottom="12dp" tools:ignore="SpeakableTextPresentCheck" />
+        <io.legado.app.ui.widget.anima.RotateLoading android:id="@+id/rotate_loading" android:layout_width="36dp" android:layout_height="36dp" android:layout_gravity="center" android:layout_margin="6dp" android:visibility="gone" app:loading_width="2dp" />
+        <TextView android:id="@+id/tv_msg" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_gravity="center" android:padding="24dp" android:gravity="center" android:textColor="@color/secondaryText" android:visibility="gone" tools:ignore="SpeakableTextPresentCheck" />
+    </FrameLayout>
+
+    <LinearLayout android:id="@+id/ll_footer" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:orientation="horizontal" android:padding="8dp" android:visibility="gone">
+        <io.legado.app.ui.widget.anima.RotateLoading android:id="@+id/footer_rotate_loading" android:layout_width="18dp" android:layout_height="18dp" android:layout_marginEnd="6dp" app:loading_width="2dp" />
+        <TextView android:id="@+id/footer_tv_msg" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/paragraph_comment_loading" android:textColor="@color/secondaryText" android:textSize="12sp" />
+    </LinearLayout>
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="64dp" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="16dp" android:paddingEnd="16dp">
+        <TextView android:id="@+id/tv_input" android:layout_width="0dp" android:layout_height="42dp" android:layout_weight="1" android:gravity="center_vertical" android:paddingStart="18dp" android:paddingEnd="18dp" android:text="写下你的段评…" android:textColor="@color/secondaryText" android:textSize="14sp" />
+        <TextView android:id="@+id/tv_voice" android:layout_width="56dp" android:layout_height="48dp" android:gravity="center" android:text="♩\n配音" android:textColor="@color/secondaryText" android:textSize="11sp" android:contentDescription="配音" />
+    </LinearLayout>
 </LinearLayout>
