@@ -1150,7 +1150,7 @@ class BookInfoActivity :
             names.add(getString(R.string.book_paragraph_comment_source_none))
             urls.add("")
             if (book.isLocal) {
-                names.add("起点直连（无需书源）")
+                names.add("起点直连（搜索/链接绑定，无需书源）")
                 urls.add(io.legado.app.model.webBook.QidianParagraphComment.BINDING_PREFIX)
             }
             parts.forEach {
@@ -1158,34 +1158,13 @@ class BookInfoActivity :
                 urls.add(it.bookSourceUrl)
             }
             selector(getString(R.string.book_paragraph_comment_source), names) { _, index ->
-                if (index in urls.indices) {
-                    if (urls[index] == io.legado.app.model.webBook.QidianParagraphComment.BINDING_PREFIX) {
-                        val input = EditText(this).apply {
-                            hint = "输入起点 bookId，例如 1010868264"
-                            inputType = InputType.TYPE_CLASS_NUMBER
-                            setSingleLine(true)
-                        }
-                        AlertDialog.Builder(this)
-                            .setTitle("绑定起点作品")
-                            .setMessage("只需要输入一次起点作品 bookId，阅读本地书时会自动按章节标题匹配真实 chapterId。")
-                            .setView(input)
-                            .setNegativeButton(R.string.cancel, null)
-                            .setPositiveButton(R.string.ok) { _, _ ->
-                                val id = input.text.toString().trim()
-                                if (id.matches(Regex("\\d+"))) {
-                                    sourceHolder[0] = io.legado.app.model.webBook.QidianParagraphComment.BINDING_PREFIX + id
-                                    sourceRow.text = getString(R.string.book_paragraph_comment_source) +
-                                        "：" + sourceName(sourceHolder[0])
-                                } else {
-                                    toastOnUi("bookId 无效")
-                                }
-                            }
-                            .show()
-                    } else {
-                        sourceHolder[0] = urls[index].ifBlank { null }
-                        sourceRow.text = getString(R.string.book_paragraph_comment_source) +
-                            "：" + sourceName(sourceHolder[0])
-                    }
+                if (index !in urls.indices) return@selector
+                if (urls[index] == io.legado.app.model.webBook.QidianParagraphComment.BINDING_PREFIX) {
+                    showQidianBindingDialog(sourceHolder, sourceRow, sourceName)
+                } else {
+                    sourceHolder[0] = urls[index].ifBlank { null }
+                    sourceRow.text = getString(R.string.book_paragraph_comment_source) +
+                        "：" + sourceName(sourceHolder[0])
                 }
             }
         }
@@ -1200,6 +1179,72 @@ class BookInfoActivity :
             setNegativeButton(R.string.cancel, null)
             show()
         }
+    }
+
+    private fun showQidianBindingDialog(
+        sourceHolder: Array<String?>,
+        sourceRow: TextView,
+        sourceName: (String?) -> String
+    ) {
+        val padding = 20.dpToPx()
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(padding, padding / 2, padding, 0)
+        }
+        val input = EditText(this).apply {
+            hint = "输入书名或粘贴起点书籍链接"
+            setSingleLine(true)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+        }
+        layout.addView(input)
+
+        val bind = { value: String ->
+            val id = io.legado.app.model.webBook.QidianParagraphComment.extractBookId(value)
+            if (id != null) {
+                sourceHolder[0] = io.legado.app.model.webBook.QidianParagraphComment.BINDING_PREFIX + id
+                sourceRow.text = getString(R.string.book_paragraph_comment_source) + "：" + sourceName(sourceHolder[0])
+                toastOnUi("已绑定起点作品：" + id)
+                true
+            } else false
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("绑定起点作品")
+            .setMessage("可以输入书名搜索，也可以直接粘贴起点作品链接。选中作品后会自动保存 BookId。")
+            .setView(layout)
+            .setNeutralButton("粘贴链接") { _, _ ->
+                val text = input.text.toString().trim()
+                if (!bind(text)) toastOnUi("没有识别到有效的起点作品链接")
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton("搜索") { _, _ ->
+                val keyword = input.text.toString().trim()
+                if (keyword.isBlank()) {
+                    toastOnUi("请输入书名或起点链接")
+                    return@setPositiveButton
+                }
+                val directId = io.legado.app.model.webBook.QidianParagraphComment.extractBookId(keyword)
+                if (directId != null) {
+                    bind(directId)
+                    return@setPositiveButton
+                }
+                lifecycleScope.launch {
+                    val results = withContext(IO) {
+                        io.legado.app.model.webBook.QidianParagraphComment.searchBooks(keyword)
+                    }
+                    if (results.isEmpty()) {
+                        toastOnUi("没有找到起点作品，可直接粘贴起点书籍链接重试")
+                        return@launch
+                    }
+                    val labels = results.map {
+                        if (it.author.isBlank()) it.name else it.name + "  ·  " + it.author
+                    }
+                    selector("选择起点作品", labels) { _, selected ->
+                        results.getOrNull(selected)?.let { item -> bind(item.bookId) }
+                    }
+                }
+            }
+            .show()
     }
 
     @SuppressLint("InflateParams")
