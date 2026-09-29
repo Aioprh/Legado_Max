@@ -245,7 +245,7 @@ class ParagraphCommentAdapter(context: Context) :
         container.visible()
         val views = listOf(img1, img2, img3)
         list.forEachIndexed { index, url ->
-            ImageLoader.load(context, url)
+            ImageLoader.load(context, buildQidianImageModel(url))
                 .placeholder(R.drawable.image_cover_default)
                 .error(R.drawable.image_cover_default)
                 .into(views[index])
@@ -256,6 +256,34 @@ class ParagraphCommentAdapter(context: Context) :
         for (i in list.size until 3) {
             views[i].gone()
         }
+    }
+
+    /**
+     * 起点配图统一规范化并补齐 CDN 请求头。
+     * 网页端同源加载正常，但 Android 直接请求 CDN 时可能因缺少 Referer/User-Agent 被拒绝。
+     * 同时兼容 //、http、HTML 实体、反斜杠转义和多层 URL 编码。
+     */
+    private fun buildQidianImageModel(raw: String): Any {
+        var url = raw.trim()
+        repeat(2) {
+            url = runCatching { java.net.URLDecoder.decode(url, "UTF-8") }.getOrDefault(url)
+        }
+        url = url
+            .replace("\\\\/", "/")
+            .replace("&amp;", "&", ignoreCase = true)
+            .replace("&quot;", "\"", ignoreCase = true)
+            .trim()
+        if (url.startsWith("//")) url = "https:$url"
+        if (url.startsWith("http://", ignoreCase = true)) {
+            url = "https://" + url.substring(7)
+        }
+        if (!url.startsWith("https://", ignoreCase = true)) return url
+
+        val headers = LazyHeaders.Builder()
+            .addHeader("User-Agent", "Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 Chrome/140.0 Mobile Safari/537.36")
+            .addHeader("Referer", "https://www.qidian.com/")
+            .build()
+        return GlideUrl(url, headers)
     }
 
     /** 绑定语音评论条：可点击，根据加载/播放状态切换文案 */
