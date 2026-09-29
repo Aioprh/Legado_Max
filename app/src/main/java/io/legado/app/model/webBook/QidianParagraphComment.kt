@@ -205,7 +205,7 @@ object QidianParagraphComment {
     fun fetchParagraphReviews(bookId: String, chapterId: String, paragraphId: Int, page: Int, pageSize: Int): String? {
         if (paragraphId <= 0) return null
         return runCatching {
-            val chapterUrl = CHAPTER_PAGE.format(bookId, chapterId)
+            val chapterUrl = "https://www.qidian.com/chapter/" + bookId + "/" + chapterId + "/"
             val pageHtml = qidianHttpGet(chapterUrl) ?: return@runCatching null
             val token = Regex("""["']?_csrfToken["']?\s*[:=]\s*["']([^"']+)["']""")
                 .find(pageHtml)?.groupValues?.get(1).orEmpty()
