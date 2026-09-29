@@ -575,7 +575,7 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             adapter.updateItem(item)
         } catch (e: Exception) {
             AppLog.put("段评语音播放失败", e)
-            toastOnUi(getString(R.string.paragraph_comment_audio_failed))
+            Toast.makeText(requireContext(), getString(R.string.paragraph_comment_audio_failed), Toast.LENGTH_SHORT).show()
         }
     }
 
