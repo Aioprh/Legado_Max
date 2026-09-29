@@ -245,7 +245,7 @@ class ParagraphCommentAdapter(context: Context) :
         container.visible()
         val views = listOf(img1, img2, img3)
         list.forEachIndexed { index, url ->
-            ImageLoader.load(context, buildQidianImageModel(url))
+            Glide.with(context).load(buildQidianImageModel(url))
                 .placeholder(R.drawable.image_cover_default)
                 .error(R.drawable.image_cover_default)
                 .into(views[index])
