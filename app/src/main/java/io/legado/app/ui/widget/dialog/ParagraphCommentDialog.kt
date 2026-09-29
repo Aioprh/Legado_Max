@@ -335,11 +335,6 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         return if (sortMode == SortMode.REALTIME) items else items.sortedWith(sortComparator())
     }
 
-    private fun sortComparator(): Comparator<ParagraphCommentItem> = when (sortMode) {
-        SortMode.NEWEST -> compareByDescending<ParagraphCommentItem> { it.isGod }.thenByDescending { it.time }
-        SortMode.HOT -> compareByDescending<ParagraphCommentItem> { it.replyCount }.thenByDescending { it.time }
-        SortMode.REALTIME -> Comparator { _, _ -> 0 }
-    }
 
     private fun applySort() { adapter.setItems(sortedVisibleItems()) }
 
@@ -522,7 +517,7 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                     playAudio(item, audioUrl)
                 } else {
                     adapter.updateItem(item)
-                    toastOnUi(getString(R.string.paragraph_comment_audio_failed))
+                    showMsg(getString(R.string.paragraph_comment_audio_failed))
                 }
             }
         }
