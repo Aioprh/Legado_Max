@@ -2122,9 +2122,13 @@ class TextChapterLayout(
         val encodedText = Uri.encode(displayText)
         val encodedStatus = Uri.encode(status)
         val pclick = option.valueIgnoreCase("pclick")?.takeIf { it.isNotBlank() }
-        val clickScript = pclick
+        val click = option.valueIgnoreCase("click")?.takeIf { it.isNotBlank() }
+        val clickScript = (pclick ?: click).takeIf { it.isNotBlank() }
         val clickQuery = clickScript?.let { "&click=${Uri.encode(it)}" }.orEmpty()
         val bubbleUrl = "bubble://paragraph?displayText=$encodedText&num=$encodedText&status=$encodedStatus$colorQuery$clickQuery"
+        return ForcedBubbleResult(bubbleUrl, pclick ?: click)
+    }
+
         return ForcedBubbleResult(bubbleUrl, pclick ?: click)
         return ForcedBubbleResult(bubbleUrl, pclick ?: click)
 
