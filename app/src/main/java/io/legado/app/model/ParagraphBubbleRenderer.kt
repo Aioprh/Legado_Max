@@ -120,6 +120,11 @@ object ParagraphBubbleRenderer {
         return queryValue(src, "status").ifBlank { "normal" }
     }
 
+    /** 从 bubble://paragraph URL 读取点击脚本，避免 ImageSpan 重建时丢失原始 option。 */
+    fun clickScript(src: String): String? {
+        return queryValue(src, "click").takeIf { it.isNotBlank() }
+    }
+
     private fun displayColor(src: String): String? {
         return queryValue(src, "displayColor")
             .ifBlank { queryValue(src, "color") }
