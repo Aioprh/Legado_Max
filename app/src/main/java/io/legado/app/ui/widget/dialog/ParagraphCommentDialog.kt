@@ -897,6 +897,9 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                 var s = value.toString()
                     .replace("\\u003C", "<", ignoreCase = true)
                     .replace("\\u003E", ">", ignoreCase = true)
+                    .replace("\\u002F", "/", ignoreCase = true)
+                    .replace("\\\\/", "/", ignoreCase = true)
+                    .replace("\\\\"", "\"", ignoreCase = true)
                     .replace("&quot;", "\"", ignoreCase = true)
                     .replace("&#34;", "\"", ignoreCase = true)
                     .replace("&amp;", "&", ignoreCase = true)
@@ -948,9 +951,53 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                         .getOrNull()
                         ?.let { collectImageUrls(it, out); return }
                 }
-                if (s.startsWith("http") && out.size < 9) out.add(s)
+                extractHttpImageUrls(s).forEach { url ->
+                    if (out.size < 9) out.add(url)
+                }
             }
         }
+    }
+
+    /**
+     * 从任意字符串中提取图片 URL。
+     *
+     * 起点段评的图片字段并不总是直接返回 https://...：
+     * - 可能是 \\/ 转义后的 URL；
+     * - 可能是 \\u002F 转义；
+     * - 可能以 //cdn... 开头；
+     * - 也可能把 URL 包在 JSON/HTML/其它字符串里。
+     *
+     * 之前只判断 startsWith("http")，会把这些合法图片全部丢掉。
+     */
+    private fun extractHttpImageUrls(value: String): List<String> {
+        if (value.isBlank()) return emptyList()
+        val normalized = value
+            .replace("\\\\/", "/")
+            .replace("\\u002F", "/", ignoreCase = true)
+            .replace("\\u003A", ":", ignoreCase = true)
+            .replace("\\u0026", "&", ignoreCase = true)
+            .replace("\\u003D", "=", ignoreCase = true)
+            .replace("&amp;", "&", ignoreCase = true)
+            .trim()
+
+        val urls = LinkedHashSet<String>()
+        val regex = Regex(
+            """(?:(?:https?:)?//)[^\s"'<>\\]+""",
+            RegexOption.IGNORE_CASE
+        )
+        regex.findAll(normalized).forEach { match ->
+            var url = match.value.trimEnd(',', ';', ')', ']', '}')
+            if (url.startsWith("//")) url = "https:$url"
+            if (url.startsWith("http://") || url.startsWith("https://")) {
+                urls.add(url)
+            }
+        }
+
+        // 字符串本身就是 data:image/... 时保留。
+        if (normalized.startsWith("data:image/", ignoreCase = true)) {
+            urls.add(normalized)
+        }
+        return urls.toList()
     }
 
     /** 提取语音评论：有直接播放地址返回地址，否则检测到语音相关字段（AudioRoleId/AudioTime 等）返回标记值 */
