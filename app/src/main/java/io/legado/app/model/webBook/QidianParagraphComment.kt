@@ -197,6 +197,60 @@ object QidianParagraphComment {
     private fun firstInt(map: Map<*, *>, vararg keys: String): Int? =
         firstString(map, *keys)?.toIntOrNull()
 
+
+    /**
+     * 原生段评详情接口。起点网页端 reviewList 使用 segmentId 对应段落，
+     * page/pageSize 用于分页；_csrfToken 从起点章节页动态取得。
+     */
+    fun fetchParagraphReviews(bookId: String, chapterId: String, paragraphId: Int, page: Int, pageSize: Int): String? {
+        if (paragraphId <= 0) return null
+        return runCatching {
+            val chapterUrl = CHAPTER_PAGE.format(bookId, chapterId)
+            val pageHtml = qidianHttpGet(chapterUrl) ?: return@runCatching null
+            val token = Regex("""["']?_csrfToken["']?\s*[:=]\s*["']([^"']+)["']""")
+                .find(pageHtml)?.groupValues?.get(1).orEmpty()
+                if (token.isBlank()) {
+                    Regex("""_csrfToken=([^&"'\\s]+)""").find(pageHtml)?.groupValues?.get(1).orEmpty()
+                }
+            if (token.isBlank()) return@runCatching null
+
+            val summaryUrl = "https://www.qidian.com/ajax/chapterReview/reviewSummary" +
+                "?bookId=" + urlEncode(bookId) +
+                "&chapterId=" + urlEncode(chapterId) +
+                "&_csrfToken=" + urlEncode(token)
+            val summary = qidianHttpGet(summaryUrl) ?: return@runCatching null
+            val segmentId = runCatching {
+                val list = jsonPath.parse(summary).read<List<Any?>>("$.data.list") ?: emptyList()
+                list.mapNotNull { it as? Map<*, *> }.firstOrNull { item ->
+                    firstString(item, "segmentId", "SegmentId") == paragraphId.toString()
+                }?.let { firstString(it, "segmentId", "SegmentId") }
+            }.getOrNull() ?: paragraphId.toString()
+
+            val reviewUrl = "https://www.qidian.com/ajax/chapterReview/reviewList" +
+                "?bookId=" + urlEncode(bookId) +
+                "&chapterId=" + urlEncode(chapterId) +
+                "&page=" + page +
+                "&pageSize=" + pageSize +
+                "&segmentId=" + urlEncode(segmentId) +
+                "&type=2" +
+                "&_csrfToken=" + urlEncode(token)
+            qidianHttpGet(reviewUrl)
+        }.getOrNull()
+    }
+
+    private fun qidianHttpGet(url: String): String? = runCatching {
+        val request = Request.Builder()
+            .url(url)
+            .header("User-Agent", USER_AGENT)
+            .header("Accept", "application/json, text/plain, */*")
+            .header("Referer", "https://www.qidian.com/")
+            .build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) return@use null
+            response.body?.string()?.trimStart('\uFEFF')
+        }
+    }.getOrNull()
+
     private fun httpGet(url: String): String? = runCatching {
         val request = Request.Builder()
             .url(url)
