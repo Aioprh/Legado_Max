@@ -350,7 +350,7 @@ object QidianParagraphComment {
 
     private fun device(): Device {
         val prefs = splitties.init.appCtx.getSharedPreferences("qidian_paragraph_comment", 0)
-        val saved = prefs.getString("qimei", null)
+        val saved = prefs.getString("qimei_v2", null)
         if (!saved.isNullOrBlank()) {
             return Device(saved, prefs.getString("model", "PFJM10") ?: "PFJM10")
         }
@@ -376,7 +376,7 @@ object QidianParagraphComment {
         val qimei = now + mac
 
         prefs.edit()
-            .putString("qimei", qimei)
+            .putString("qimei_v2", qimei)
             .putString("model", model)
             .putString("brand", brand)
             .apply()
