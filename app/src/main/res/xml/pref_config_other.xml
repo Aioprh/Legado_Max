@@ -163,6 +163,14 @@
             android:summary="@string/custom_hosts_summary"
             android:title="@string/custom_hosts" />
 
+        <!-- 本地书段评：开启后，本地书籍可使用全局段评书源显示段评气泡 -->
+        <io.legado.app.lib.prefs.SwitchPreference
+            android:defaultValue="false"
+            android:key="localParagraphComment"
+            android:summary="@string/local_paragraph_comment_summary"
+            android:title="@string/local_paragraph_comment"
+            app:iconSpaceReserved="false" />
+
         <io.legado.app.lib.prefs.SwitchPreference
             android:defaultValue="false"
             android:key="webServiceWakeLock"
