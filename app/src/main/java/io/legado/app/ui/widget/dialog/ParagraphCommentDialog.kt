@@ -54,6 +54,24 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         }
     }
 
+    /** 本地书起点直连段评：不需要 BookSource。 */
+    constructor(bookId: String, chapterId: String, paragraphId: Int, qidian: Boolean) : this() {
+        val config = ParagraphCommentConfig(
+            title = "段评",
+            listPath = "$.data.list",
+            totalPath = "$.data.total",
+            commentsUrl = "qidian://comments?bookId=" + bookId +
+                "&chapterId=" + chapterId + "&paragraphId=" + paragraphId +
+                "&page=[page]&pageSize=[pageSize]",
+            pageSize = 20,
+            sortEnabled = true
+        )
+        arguments = Bundle().apply {
+            putString("sourceKey", null)
+            putString("config", GSON.toJson(config))
+        }
+    }
+
     private val binding by viewBinding(DialogParagraphCommentBinding::bind)
     private val adapter by lazy { ParagraphCommentAdapter(requireContext()) }
     private var source: BaseSource? = null
@@ -603,6 +621,22 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
 
     private suspend fun fetchBody(url: String): String? {
         if (url.isBlank()) return null
+        if (url.startsWith("qidian://comments", ignoreCase = true)) {
+            return withContext(Dispatchers.IO) {
+                runCatching {
+                    val uri = android.net.Uri.parse(url)
+                    val bookId = uri.getQueryParameter("bookId").orEmpty()
+                    val chapterId = uri.getQueryParameter("chapterId").orEmpty()
+                    val paragraphId = uri.getQueryParameter("paragraphId")?.toIntOrNull() ?: return@runCatching null
+                    val page = uri.getQueryParameter("page")?.toIntOrNull() ?: 1
+                    val pageSize = uri.getQueryParameter("pageSize")?.toIntOrNull() ?: 20
+                    io.legado.app.model.webBook.QidianParagraphComment
+                        .fetchParagraphReviews(bookId, chapterId, paragraphId, page, pageSize)
+                }.onFailure {
+                    AppLog.put("起点原生段评请求失败 " + url, it)
+                }.getOrNull()
+            }
+        }
         return runCatching {
             val analyzeUrl = AnalyzeUrl(url, source = source, coroutineContext = EmptyCoroutineContext)
             // 去除响应体开头的 UTF-8 BOM：部分接口（如 pl.aadcn.cn）返回带 BOM 的 JSON，
