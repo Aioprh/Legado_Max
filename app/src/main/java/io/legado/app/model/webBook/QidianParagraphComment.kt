@@ -226,7 +226,6 @@ object QidianParagraphComment {
     ): String {
         if (count <= 0 || paragraph.contains("dp:")) return paragraph
 
-        val url = CHAPTER_PAGE.format(bookId, chapterId)
         val pclick = "java.showQidianParagraphComments('" + bookId + "','" + chapterId + "'," + paragraphId + ");"
         val display = if (count > 99) "99+" else count.toString()
         val option = "{\\\"pclick\\\":\\\"" + pclick + "\\\",\\\"status\\\":\\\"normal\\\",\\\"displayText\\\":\\\"" + display + "\\\"}"
