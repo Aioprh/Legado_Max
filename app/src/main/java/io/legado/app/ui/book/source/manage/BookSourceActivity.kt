@@ -634,7 +634,10 @@ sendToClip(text)
         val cacheUrls: MutableList<String> = aCache
             .getAsString(importRecordKey)
             ?.splitNotBlank(",")
-            ?.toMutableList() ?: mutableListOf()
+            ?.filter { it.isAbsUrl() }
+            ?.distinct()
+            ?.toMutableList()
+            ?: mutableListOf()
         alert(titleResource = R.string.import_on_line) {
             val alertBinding = ImportUrlDialogHelper.createBinding(
                 layoutInflater = layoutInflater,
@@ -654,11 +657,18 @@ sendToClip(text)
             okButton {
                 val text = alertBinding.editView.text?.toString()?.trim()
                 text?.let {
-                    if (it.isAbsUrl() && !cacheUrls.contains(it)) {
+                    if (it.isAbsUrl()) {
+                        // 最近使用的 URL 始终置顶，并去重；限制持久化历史规模，避免缓存无限增长。
+                        cacheUrls.removeAll { url -> url == it }
                         cacheUrls.add(0, it)
+                        if (cacheUrls.size > 20) {
+                            cacheUrls.subList(20, cacheUrls.size).clear()
+                        }
                         aCache.put(importRecordKey, cacheUrls.joinToString(","))
+                        showDialogFragment(ImportBookSourceDialog(it))
+                    } else {
+                        toastOnUi(R.string.url_format_error)
                     }
-                    showDialogFragment(ImportBookSourceDialog(it))
                 }
             }
             cancelButton()
