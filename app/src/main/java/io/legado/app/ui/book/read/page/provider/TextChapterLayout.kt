@@ -2126,10 +2126,8 @@ class TextChapterLayout(
         val clickScript = (pclick ?: click).takeIf { it.isNotBlank() }
         val clickQuery = clickScript?.let { "&click=${Uri.encode(it)}" }.orEmpty()
         val bubbleUrl = "bubble://paragraph?displayText=$encodedText&num=$encodedText&status=$encodedStatus$colorQuery$clickQuery"
-        return ForcedBubbleResult(bubbleUrl, pclick ?: click)
     }
 
-        return ForcedBubbleResult(bubbleUrl, pclick ?: click)
         return ForcedBubbleResult(bubbleUrl, pclick ?: click)
 
     /** 段评气泡 option 的已知键，用于从非法 JSON 中定位值边界 */
