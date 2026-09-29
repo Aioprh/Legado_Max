@@ -47,18 +47,8 @@ object HtmlFormatter {
         // 内部协议（段评气泡 dp:/bubble:// 等）不参与 URL 拼接，整段原样保留；
         // 否则 formatImagePattern 会把含引号/大括号的 src 截断，导致气泡点击脚本丢失
         val internalImgMap = HashMap<String, String>()
-        val protectedSb = StringBuilder()
-        val internalMatcher = internalImgPattern.matcher(keepImgHtml)
-        var internalPos = 0
-        while (internalMatcher.find()) {
-            protectedSb.append(keepImgHtml, internalPos, internalMatcher.start())
-            val placeholder = "\u0000internal_img_${internalImgMap.size}\u0000"
-            internalImgMap[placeholder] = internalMatcher.group()
-            protectedSb.append(placeholder)
-            internalPos = internalMatcher.end()
-        }
-        protectedSb.append(keepImgHtml, internalPos, keepImgHtml.length)
-        val protectedHtml = protectedSb.toString()
+        // 使用扫描器保护内部协议图片，兼容 dp: 后 JSON 中包含引号的情况。
+        val protectedHtml = protectInternalImgTags(keepImgHtml, internalImgMap)
 
         //正则的“|”处于顶端而不处于（）中时，具有类似||的熔断效果，故以此机制简化原来的代码
         val matcher = formatImagePattern.matcher(protectedHtml)
@@ -133,7 +123,8 @@ object HtmlFormatter {
             if (end > imgStart) {
                 sb.append(html, pos, imgStart)
                 val placeholder = "\u0000internal_img_${map.size}\u0000"
-                map[placeholder] = html.substring(imgStart, end)
+                // 兼容旧版段评气泡中的反斜杠转义；HTML 属性不把反斜杠视为转义符。
+                map[placeholder] = html.substring(imgStart, end).replace("""\""", "&quot;")
                 sb.append(placeholder)
                 pos = end
                 searchFrom = end
