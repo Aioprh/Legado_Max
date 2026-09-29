@@ -92,7 +92,7 @@ object QidianParagraphComment {
     }
 
     suspend fun inject(book: Book, chapter: BookChapter, content: String): String {
-        val id = bookId(book.config.paragraphCommentSource) ?: return content
+        val id = bookId(book.readConfig?.paragraphCommentSource) ?: return content
         val chapterId = resolveChapterId(id, chapter) ?: run {
             AppLog.putReaderDebug("本地书段评: 起点目录未匹配章节《" + chapter.title + "》")
             return content
