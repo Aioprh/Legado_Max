@@ -29,6 +29,10 @@ object QidianParagraphComment {
     private const val API_HOST = "https://druidv6.if.qidian.com/argus/api/"
     private const val CATALOG_URL = "https://m.qidian.com/book/%s/catalog/"
 
+    /** H5 分享短链解析接口（与 share-link 页面同源，无需签名） */
+    private const val SHARE_SHORT_INFO_URL =
+        "https://h5.if.qidian.com/argus/api/v1/bookdetail/getshareshortinfo"
+
     private val client = OkHttpClient.Builder().build()
     private val catalogCache = HashMap<String, Map<String, String>>()
     private val summaryCache = HashMap<String, Map<Int, Int>>()
@@ -88,6 +92,10 @@ object QidianParagraphComment {
             """https?://h5\.if\.qidian\.com/h5/share-link(?:\?|%3F)id=(\d{5,})""",
             RegexOption.IGNORE_CASE
         ).find(text)?.groupValues?.getOrNull(1) ?: return@withContext null
+
+        // 首选官方短链解析接口：share-link 页面本身是纯静态 SPA，HTML 内不含 bookId，
+        // 只有该接口返回的 OriginText 才是真正的原始分享链接（携带 bookId）。
+        resolveShareShortParam(shareId)?.let { return@withContext it }
 
         val shareUrl = "https://h5.if.qidian.com/h5/share-link?id=" + shareId
 
@@ -554,6 +562,29 @@ object QidianParagraphComment {
         val random = java.util.Random()
         return buildString { repeat(length) { append(chars[random.nextInt(chars.length)]) } }
     }
+
+    /**
+     * 解析起点 H5 分享短链：GET /argus/api/v1/bookdetail/getshareshortinfo?shortParam=<id>。
+     * 返回 Data.OriginText 为原始分享链接（形如 magev6.if.qidian.com/h5/share/book?...&bookId=...），
+     * 从中提取作品 ID；接口异常或字段缺失时返回 null，由调用方回退到页面重定向解析。
+     */
+    private fun resolveShareShortParam(shareId: String): String? = runCatching {
+        val request = Request.Builder()
+            .url(SHARE_SHORT_INFO_URL + "?shortParam=" + urlEncode(shareId))
+            .header("User-Agent", WEB_USER_AGENT)
+            .header("Accept", "application/json, text/plain, */*")
+            .header("Referer", "https://h5.if.qidian.com/")
+            .build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) return@use null
+            val body = response.body?.string().orEmpty()
+            if (body.isBlank()) return@use null
+            val origin = runCatching {
+                jsonPath.parse(body).read<String>("$.Data.OriginText")
+            }.getOrNull()
+            extractBookId(origin?.takeIf { it.isNotBlank() } ?: body)
+        }
+    }.getOrNull()
 
     private fun httpGet(url: String): String? = runCatching {
         val request = Request.Builder()
