@@ -899,7 +899,7 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                     .replace("\\u003E", ">", ignoreCase = true)
                     .replace("\\u002F", "/", ignoreCase = true)
                     .replace("\\\\/", "/", ignoreCase = true)
-                    .replace("\\\\"", "\"", ignoreCase = true)
+                    .replace("\\\"", "\"", ignoreCase = true)
                     .replace("&quot;", "\"", ignoreCase = true)
                     .replace("&#34;", "\"", ignoreCase = true)
                     .replace("&amp;", "&", ignoreCase = true)
