@@ -75,11 +75,12 @@ object QidianParagraphComment {
      * 解析起点 H5 分享作品链接。
      *
      * share-link?id=... 中的数字是分享链接 ID，不是作品 bookId。
-     * 按分享链接转换工具的实际流程：
-     *   1. GET share-link；
-     *   2. 跟随 HTTP 30x；
-     *   3. 优先从最终落地 URL / 重定向 Location 提取 bookId；
-     *   4. 最后才从 HTML 中提取 bookId。
+     * 解析流程：
+     *   1. GET /argus/api/v1/bookdetail/getshareshortinfo?shortParam=<id>，
+     *      取 Data.OriginText（原始分享链接，含 bookId）——share-link 页面为纯静态 SPA，
+     *      HTML 内不含 bookId，必须走该接口；
+     *   2. 接口失败时兜底：GET share-link 页面并跟随 30x，从落地 URL / Location 提取 bookId；
+     *   3. 仍无结果则从响应 HTML 中提取 bookId。
      */
     suspend fun resolveBookId(value: String?): String? = withContext(Dispatchers.IO) {
         // 普通 bookId / 书籍 URL 直接处理，避免无意义的网络请求。
