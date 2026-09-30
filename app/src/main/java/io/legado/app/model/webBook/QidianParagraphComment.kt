@@ -344,13 +344,16 @@ object QidianParagraphComment {
 
 
     /**
-     * 段落评论列表（起点 App 签名接口 v2）。
+     * 段落评论列表。
      *
-     * 起点移动网页 majax 接口（m.qidian.com/majax/chapterReview/reviewList）对图片评论
-     * 只返回 hasImage 标记、不下发图片 URL，导致弹窗里图片无法显示；
-     * 改走 App 签名接口 v2/chapterreview/getparagraphscomments（type=0）：
+     * 优先走起点 App 签名接口 v2/chapterreview/getparagraphscomments（type=0）：
      * 文字/图片/语音评论同列表返回，图片评论直接带 ImageDetail/PreImage/ImgInfo，
      * 字段与 ParagraphCommentDialog 的默认解析路径（Id/UserName/UserHeadIcon/AgreeAmount/...）完全对齐。
+     *
+     * 该签名接口对免费章节返回 Result=0；对 VIP 章节返回 Result=10100（匿名 qimei 无订阅权限），
+     * 此时回退移动网页 majax 接口（m.qidian.com/majax/chapterReview/reviewList，随机 CSRF 即可通过）：
+     * 文字段评可用，且 reviewId 即网页端 reviewId，可直接用于回复接口；
+     * VIP 章图片/语音仍受限（官方接口同样 10100），列表仅提供文字+回复预览。
      *
      * 返回与弹窗约定一致的结构 {"code":0,"data":{"list":[...],"total":N}}，
      * 由 [io.legado.app.ui.widget.dialog.ParagraphCommentDialog] 按 $.data.list / $.data.total 解析。
@@ -363,7 +366,100 @@ object QidianParagraphComment {
             "&pg=" + page +
             "&pz=" + pageSize +
             "&type=0&anchorId=0&from=0"
-        val response = signedGet("v2/chapterreview/getparagraphscomments", params) ?: return null
+        val response = signedGet("v2/chapterreview/getparagraphscomments", params)
+        val appResult = response?.let { body ->
+            runCatching { (jsonPath.parse(body).read<Any>("$.Result") as? Number)?.toInt() }.getOrNull()
+        }
+        // Result==0（或响应无法解析时按 App 可用处理）→ 免费章走 App 接口全量返回
+        if (response != null && appResult != 10100) {
+            return runCatching {
+                val json = jsonPath.parse(response)
+                val list = json.read<List<Any?>>("$.Data.DataList").orEmpty()
+                val total = runCatching { (json.read<Any>("$.Data.TotalCount") as? Number)?.toLong() }
+                    .getOrNull() ?: -1L
+                GSON.toJson(
+                    mapOf(
+                        "code" to 0,
+                        "data" to mapOf(
+                            "list" to list,
+                            "total" to total
+                        )
+                    )
+                )
+            }.getOrElse {
+                AppLog.put("起点段评列表解析失败: " + response.take(200), it)
+                null
+            }
+        }
+        // Result=10100（VIP 章签名接口被拒）→ 回退移动网页 majax 文字段评
+        return majaxReviews(bookId, chapterId, paragraphId, page, pageSize)
+    }
+
+    /**
+     * 段落评论回复展开。
+     *
+     * App 签名接口 v2/chapterreview/getparagraphscommentsreview 的 rootReviewId
+     * 只认网页端 reviewId（majax/reviewlist4m 系），而 v2 列表下发的是 App 侧 id，
+     * 两套 id 无固定换算（实测 +20/+36/+8 不定）。
+     *
+     * 定位方式：翻页 majax 列表，按「内容.trim() + "|" + 秒级创建时间」匹配（匹配键两系统实测一致），
+     * 命中后取得网页端 reviewId，再调签名回复接口。VIP 章列表回退 majax 时条目本就带网页 reviewId，
+     * 同一匹配逻辑直接命中，无需区分章节类型。
+     *
+     * 返回与弹窗约定一致的结构 {"code":0,"data":{"list":[...],"total":N}}。
+     */
+    fun fetchParagraphReplies(
+        bookId: String,
+        chapterId: String,
+        paragraphId: Int,
+        content: String,
+        createTime: Long,
+        page: Int,
+        pageSize: Int
+    ): String? {
+        if (paragraphId <= 0) return null
+        // 1) majax 列表按（内容|秒级时间）定位网页端 reviewId
+        val key = content.trim() + "|" + (createTime / 1000)
+        var reviewId: String? = null
+        for (pg in 1..12) {
+            val body = majaxGet(
+                "chapterReview/reviewList?bookId=" + urlEncode(bookId) +
+                    "&chapterId=" + urlEncode(chapterId) +
+                    "&page=" + pg +
+                    "&pageSize=20" +
+                    "&paragraphId=" + paragraphId +
+                    "&type=2"
+            ) ?: break
+            val json = runCatching { jsonPath.parse(body) }.getOrNull() ?: break
+            val list = json.read<List<Any?>>("$.data.list").orEmpty()
+            if (list.isEmpty()) break
+            for (raw in list) {
+                val item = raw as? Map<*, *> ?: continue
+                val c = firstString(item, "content").orEmpty().trim()
+                val ts = when (val v = item["createTime"]) {
+                    is Number -> (v.toLong() / 1000).toString()
+                    else -> runCatching { (v.toString().toLong() / 1000).toString() }.getOrDefault("")
+                }
+                if (c + "|" + ts == key) {
+                    reviewId = firstString(item, "reviewId")
+                    break
+                }
+            }
+            if (reviewId != null) break
+            val total = runCatching { (json.read<Any>("$.data.total") as? Number)?.toLong() }.getOrNull() ?: -1L
+            if (total >= 0 && pg * 20 >= total) break
+            try { Thread.sleep(80) } catch (_: InterruptedException) {}
+        }
+        if (reviewId == null) return null
+        // 2) 签名回复接口（对 VIP 章同样可用，已实测 Result=0）
+        val params = "bookId=" + urlEncode(bookId) +
+            "&chapterId=" + urlEncode(chapterId) +
+            "&paragraphId=" + paragraphId +
+            "&pg=" + page +
+            "&pz=" + pageSize +
+            "&rootReviewId=" + reviewId +
+            "&type=0&scene=0"
+        val response = signedGet("v2/chapterreview/getparagraphscommentsreview", params) ?: return null
         return runCatching {
             val json = jsonPath.parse(response)
             val list = json.read<List<Any?>>("$.Data.DataList").orEmpty()
@@ -379,9 +475,84 @@ object QidianParagraphComment {
                 )
             )
         }.getOrElse {
-            AppLog.put("起点段评列表解析失败: " + response.take(200), it)
+            AppLog.put("起点段评回复解析失败: " + response.take(200), it)
             null
         }
+    }
+
+    /**
+     * 移动网页 majax 段评列表（免费/VIP 章通用，随机 CSRF 即可通过）。
+     * 仅文字段评：majax 对图片评论只返回 hasImage 标记、不下发图片 URL；
+     * reviewId 为网页端 id（与回复接口 rootReviewId 同系统）。
+     * 转换为弹窗约定结构，并把条目字段映射为弹窗默认解析路径。
+     */
+    private fun majaxReviews(bookId: String, chapterId: String, paragraphId: Int, page: Int, pageSize: Int): String? =
+        runCatching {
+            val body = majaxGet(
+                "chapterReview/reviewList?bookId=" + urlEncode(bookId) +
+                    "&chapterId=" + urlEncode(chapterId) +
+                    "&page=" + page +
+                    "&pageSize=" + pageSize +
+                    "&paragraphId=" + paragraphId +
+                    "&type=2"
+            ) ?: return@runCatching null
+            val json = jsonPath.parse(body)
+            val list = json.read<List<Any?>>("$.data.list").orEmpty()
+            val total = runCatching { (json.read<Any>("$.data.total") as? Number)?.toLong() }
+                .getOrNull() ?: -1L
+            val converted = list.map { raw ->
+                val item = raw as? Map<*, *> ?: return@map raw
+                val out = LinkedHashMap<String, Any>()
+                item["reviewId"]?.let {
+                    out["Id"] = it
+                    out["RootReviewId"] = it
+                }
+                item["nickName"]?.let { out["NickName"] = it; out["UserName"] = it }
+                item["avatar"]?.let { out["UserHeadIcon"] = it }
+                item["content"]?.let { out["Content"] = it }
+                item["likeCount"]?.let { out["AgreeAmount"] = it }
+                item["createTime"]?.let { out["CreateTime"] = it }
+                item["rootReviewReplyCount"]?.let { out["ReviewCount"] = it }
+                item["replyList"]?.let { out["ReplyList"] = it }
+                item["hasImage"]?.let { out["HasImage"] = it }
+                out
+            }
+            GSON.toJson(
+                mapOf(
+                    "code" to 0,
+                    "data" to mapOf(
+                        "list" to converted,
+                        "total" to total
+                    )
+                )
+            )
+        }.getOrElse {
+            AppLog.put("起点段评 majax 回退失败: " + bookId + "/" + chapterId, it)
+            null
+        }
+
+    /** majax 接口请求：随机 CSRF token 即可通过（无需网页会话） */
+    private fun majaxGet(relativePath: String): String? = runCatching {
+        val csrf = randomToken(40)
+        val url = "https://m.qidian.com/majax/" + relativePath +
+            "&_csrfToken=" + urlEncode(csrf)
+        val request = Request.Builder()
+            .url(url)
+            .header("User-Agent", WEB_USER_AGENT)
+            .header("Accept", "application/json, text/plain, */*")
+            .header("Referer", "https://m.qidian.com/")
+            .header("Cookie", "qd_client_id=" + csrf + "; _csrfToken=" + csrf)
+            .build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) return@use null
+            response.body?.string()
+        }
+    }.getOrNull()
+
+    private fun randomToken(length: Int): String {
+        val chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        val random = java.util.Random()
+        return buildString { repeat(length) { append(chars[random.nextInt(chars.length)]) } }
     }
 
     private fun httpGet(url: String): String? = runCatching {

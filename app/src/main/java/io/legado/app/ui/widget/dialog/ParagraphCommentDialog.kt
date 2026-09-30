@@ -64,6 +64,9 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             commentsUrl = "qidian://comments?bookId=" + bookId +
                 "&chapterId=" + chapterId + "&paragraphId=" + paragraphId +
                 "&page=[page]&pageSize=[pageSize]",
+            repliesUrl = "qidian://replies?bookId=" + bookId +
+                "&chapterId=" + chapterId + "&paragraphId=" + paragraphId +
+                "&content=[content]&time=[time]&pg=1&pz=[pageSize]&type=0&scene=0",
             pageSize = 20,
             sortEnabled = true
         )
@@ -487,6 +490,9 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             .replace("[reviewId]", item.id)
             .replace("[rootId]", item.rootId.ifBlank { item.id })
             .replace("[pageSize]", config.pageSize.toString())
+            // 起点直连回复接口需要按"内容+创建时间"定位网页端 reviewId，随 URL 传参
+            .replace("[content]", android.net.Uri.encode(item.content))
+            .replace("[time]", item.time.toString())
     }
 
     // ---------- 语音播放 ----------
@@ -643,6 +649,24 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                         .fetchParagraphReviews(bookId, chapterId, paragraphId, page, pageSize)
                 }.onFailure {
                     AppLog.put("起点原生段评请求失败 " + url, it)
+                }.getOrNull()
+            }
+        }
+        if (url.startsWith("qidian://replies", ignoreCase = true)) {
+            return withContext(Dispatchers.IO) {
+                runCatching {
+                    val uri = android.net.Uri.parse(url)
+                    val bookId = uri.getQueryParameter("bookId").orEmpty()
+                    val chapterId = uri.getQueryParameter("chapterId").orEmpty()
+                    val paragraphId = uri.getQueryParameter("paragraphId")?.toIntOrNull() ?: 1
+                    val content = uri.getQueryParameter("content").orEmpty()
+                    val time = uri.getQueryParameter("time")?.toLongOrNull() ?: 0L
+                    val page = uri.getQueryParameter("pg")?.toIntOrNull() ?: 1
+                    val pageSize = uri.getQueryParameter("pz")?.toIntOrNull() ?: 20
+                    io.legado.app.model.webBook.QidianParagraphComment
+                        .fetchParagraphReplies(bookId, chapterId, paragraphId, content, time, page, pageSize)
+                }.onFailure {
+                    AppLog.put("起点原生段评回复请求失败 " + url, it)
                 }.getOrNull()
             }
         }
