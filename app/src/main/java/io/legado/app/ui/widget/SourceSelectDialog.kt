@@ -70,6 +70,7 @@ object SourceSelectDialog {
                                 removeItem(item)
                                 onDelete.invoke(item)
                             }
+                            true
                         }
                     }
                 )
