@@ -1,5 +1,6 @@
 package io.legado.app.ui.widget
 
+import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
@@ -15,6 +16,7 @@ import androidx.appcompat.widget.SearchView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import io.legado.app.R
+import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.UiCorner
 import io.legado.app.lib.theme.applyUiBodyTypeface
 import io.legado.app.lib.theme.applyUiLabelStyle
@@ -35,10 +37,14 @@ object SourceSelectDialog {
         searchTexts: (T) -> List<String>,
         searchHint: String?,
         itemKey: (T) -> String,
-        onSelect: (T) -> Unit
+        onSelect: (T) -> Unit,
+        onDelete: ((T) -> Unit)? = null
     ) {
         if (items.isEmpty()) return
         var dialog: AlertDialog? = null
+        // 已删除条目的 key 集合，过滤时需排除，
+        // 否则用户再次输入搜索词时被删条目会从原始 items 中重新出现。
+        val deletedKeys = hashSetOf<String>()
         var filteredItems = items.toList()
         val adapter = object : RecyclerView.Adapter<SourceViewHolder>() {
             override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SourceViewHolder {
@@ -50,10 +56,33 @@ object SourceSelectDialog {
             override fun onBindViewHolder(holder: SourceViewHolder, position: Int) {
                 val item = filteredItems[position]
                 val selectedPrefix = if (itemKey(item) == selectedKey) "✓ " else ""
-                holder.bind(selectedPrefix + displayName(item)) {
-                    dialog?.dismiss()
-                    onSelect(item)
-                }
+                holder.bind(
+                    title = selectedPrefix + displayName(item),
+                    onClick = {
+                        dialog?.dismiss()
+                        onSelect(item)
+                    },
+                    onLongClick = if (onDelete == null) {
+                        null
+                    } else {
+                        {
+                            confirmDelete(context, displayName(item)) {
+                                removeItem(item)
+                                onDelete.invoke(item)
+                            }
+                        }
+                    }
+                )
+            }
+
+            // 删除后立即从当前弹窗列表中移除，避免出现"已删除但仍显示"的假象。
+            // 后续列表数据由外部数据源（如 flowExplore()）驱动刷新。
+            private fun removeItem(item: T) {
+                deletedKeys.add(itemKey(item))
+                val index = filteredItems.indexOfFirst { itemKey(it) == itemKey(item) }
+                if (index < 0) return
+                filteredItems = filteredItems.toMutableList().also { it.removeAt(index) }
+                notifyDataSetChanged()
             }
         }
         val searchView = SearchView(context).apply {
@@ -76,10 +105,11 @@ object SourceSelectDialog {
                 override fun onQueryTextChange(newText: String?): Boolean {
                     val key = newText.orEmpty().trim()
                     filteredItems = if (key.isBlank()) {
-                        items
+                        items.filterNot { deletedKeys.contains(itemKey(it)) }
                     } else {
                         items.filter { item ->
-                            searchTexts(item).any { text -> text.contains(key, true) }
+                            !deletedKeys.contains(itemKey(item)) &&
+                                searchTexts(item).any { text -> text.contains(key, true) }
                         }
                     }
                     adapter.notifyDataSetChanged()
@@ -146,6 +176,18 @@ object SourceSelectDialog {
         dialog.applyAdaptiveDim(container)
     }
 
+    /**
+     * 长按书源后的删除确认弹窗。
+     * 文案与换源页 / 发现页删除保持一致：标题"提醒"，正文"是否确认删除？"+ 换行 + 书源名。
+     */
+    private fun confirmDelete(context: Context, name: String, onConfirm: () -> Unit) {
+        context.alert(R.string.draw) {
+            setMessage(context.getString(R.string.sure_del) + "\n" + name)
+            noButton()
+            yesButton { onConfirm() }
+        }
+    }
+
     private class SourceOptionView(context: android.content.Context) : TextView(context) {
         init {
             layoutParams = RecyclerView.LayoutParams(
@@ -171,9 +213,20 @@ object SourceSelectDialog {
     }
 
     private class SourceViewHolder(private val rowView: SourceOptionView) : RecyclerView.ViewHolder(rowView) {
-        fun bind(title: CharSequence, onClick: () -> Unit) {
+        fun bind(title: CharSequence, onClick: () -> Unit, onLongClick: (() -> Boolean)? = null) {
             rowView.text = title
             rowView.setOnClickListener { onClick() }
+            rowView.setOnLongClickListener(
+                if (onLongClick == null) {
+                    null
+                } else {
+                    View.OnLongClickListener {
+                        // 消费长按事件，避免同时触发单击切换书源
+                        onLongClick.invoke()
+                        true
+                    }
+                }
+            )
         }
     }
 }

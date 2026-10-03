@@ -787,9 +787,37 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
             searchTexts = {
                 listOfNotNull(it.bookSourceName, it.bookSourceUrl, it.bookSourceGroup)
             },
-            itemKey = { it.bookSourceUrl }
-        ) {
-            selectDiscoverSource(it)
+            itemKey = { it.bookSourceUrl },
+            onSelect = {
+                selectDiscoverSource(it)
+            },
+            onDelete = {
+                deleteDiscoverSource(it)
+            }
+        )
+    }
+
+    /**
+     * 删除发现源。删除的若正是当前正在浏览的源，需要清空选中态，
+     * 避免后续停留在已失效的书源数据上（列表会被 flowExplore() 驱动刷新）。
+     */
+    private fun deleteDiscoverSource(source: BookSourcePart) {
+        val isCurrent = selectedDiscoverSourcePart?.bookSourceUrl == source.bookSourceUrl
+        viewModel.deleteSource(source)
+        if (isCurrent) {
+            selectedDiscoverSourcePart = null
+            selectedDiscoverSource = null
+            AppConfig.modernDiscoverySourceUrl = null
+            resetExplore()
+            discoverAllTagItems.clear()
+            discoverMajorGroups.clear()
+            discoverSettingItems.clear()
+            selectedDiscoverMajorGroup = null
+            renderDiscoverMajorGroups()
+            updateDiscoverLoginButtonState()
+            updateDiscoverSearchButtonState()
+            updateDiscoverTagFilterButtonState()
+            selectedDiscoverSourcePart?.let { updateDiscoverSourceTitle() }
         }
     }
 
