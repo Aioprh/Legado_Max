@@ -39,7 +39,7 @@ class NavItemSortDialogFragment : DialogFragment() {
         }
 
         // 补全可能缺失的项（兼容旧数据）
-        for (key in listOf("bookshelf", "homepage", "explore", "rss", "my")) {
+        for (key in listOf("bookshelf", "homepage", "explore", "rss", "video", "my")) {
             if (items.none { it.key == key }) {
                 val config = buildNavItemConfig(context, key, showHomepage, showDiscovery, showRss)
                 if (config != null) items.add(config)
@@ -90,6 +90,10 @@ class NavItemSortDialogFragment : DialogFragment() {
                 "rss" -> NavItemSortAdapter.NavItemConfig(
                     "rss", context.getString(R.string.rss),
                     R.drawable.ic_bottom_rss_feed, showRss
+                )
+                "video" -> NavItemSortAdapter.NavItemConfig(
+                    "video", context.getString(R.string.video),
+                    R.drawable.ic_play_outline_24dp, true
                 )
                 "my" -> NavItemSortAdapter.NavItemConfig(
                     "my", context.getString(R.string.my),
