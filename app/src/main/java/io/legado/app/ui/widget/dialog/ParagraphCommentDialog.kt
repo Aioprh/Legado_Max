@@ -908,7 +908,48 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         }
         // 最后再按 key 名兜底扫描，兼容其它站点不同命名。
         if (result.isEmpty()) collectImpliedImageUrls(map, result)
-        return result.take(9)
+        return preferJpegImages(result.toList()).take(9)
+    }
+
+    /**
+     * 段评配图优选：同一张图接口有时会同时下发 HEIC 原图与 .jpeg（预览）两张，
+     * 优先使用兼容性最好的 .jpeg/.jpg（HEIC 需 Android 9+ 且解码成本更高），
+     * 其它格式次之，HEIC/HEIF 排最后。
+     *
+     * 同一张图的不同格式（路径与文件名主体相同、仅扩展名/format 参数不同）只保留一张，
+     * 避免同一张图重复占据缩略图位；JPEG 先入，因此保留的是 JPEG。
+     */
+    private fun preferJpegImages(urls: List<String>): List<String> {
+        if (urls.size < 2) return urls
+        val seen = HashSet<String>(urls.size)
+        val ordered = ArrayList<String>(urls.size)
+        urls.sortedBy { imageFormatRank(it) }.forEach { url ->
+            if (seen.add(imageIdentity(url))) ordered.add(url)
+        }
+        return ordered
+    }
+
+    /** 图片格式优先级：JPEG 最优，HEIC/HEIF 最差（需 Android 9+ 原生解码） */
+    private fun imageFormatRank(url: String): Int {
+        val u = url.lowercase()
+        return when {
+            u.contains(".jpeg") || u.contains(".jpg") ||
+                u.contains("format=jpeg") || u.contains("format=jpg") -> 0
+            u.contains(".heic") || u.contains(".heif") ||
+                u.contains("format=heic") || u.contains("format=heif") -> 2
+            else -> 1
+        }
+    }
+
+    /** 图片身份（忽略查询参数与扩展名），用于把"同图不同格式"归并为同一张 */
+    private fun imageIdentity(url: String): String {
+        val path = url.substringBefore('?').substringBefore('#')
+        val slash = path.lastIndexOf('/')
+        val dir = if (slash >= 0) path.substring(0, slash + 1) else ""
+        val name = if (slash >= 0) path.substring(slash + 1) else path
+        val dot = name.lastIndexOf('.')
+        val base = if (dot > 0) name.substring(0, dot) else name
+        return dir + base
     }
 
     /** 从 Content/ImageMeaning 等字符串中的 HTML 提取图片，兼容 src、data-src、data-original、data-image。 */

@@ -44,6 +44,10 @@ class LegadoGlideModule : AppGlideModule() {
         val bitmapPool = AsyncRecycleBitmapPool(calculator.bitmapPoolSize)
         builder.setMemorySizeCalculator(calculator)
         builder.setBitmapPool(bitmapPool)
+        // 段评等图片包含 HEIC/HEIF：Glide 默认走 BitmapFactory 解码，而 BitmapFactory 不支持 HEIC，
+        // 会直接解码失败。改用 ImageDecoder（Android 9+ 系统原生支持 HEIF）即可正常解码 HEIC/HEIF，
+        // 低于 Android 9 的设备仍自动回退 BitmapFactory。
+        builder.setImageDecoderEnabledForBitmaps(true)
         builder.setDiskCache(InternalCacheDiskCacheFactory(context, 1024 * 1024 * 1000))
         if (!BuildConfig.DEBUG && !AppConfig.recordLog) {
             builder.setLogLevel(Log.ERROR)
