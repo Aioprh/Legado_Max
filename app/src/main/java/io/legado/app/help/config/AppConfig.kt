@@ -444,6 +444,14 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         get() = appCtx.getPrefInt(PreferKey.modernDiscoveryLayout, 2).coerceIn(0, 2)
         set(value) = appCtx.putPrefInt(PreferKey.modernDiscoveryLayout, value.coerceIn(0, 2))
 
+    /** 当前影视页选择的影视书源 URL；影视分类完全由该书源提供。 */
+    var videoSourceUrl: String?
+        get() = appCtx.getPrefString("videoSourceUrl")
+        set(value) {
+            if (value.isNullOrBlank()) appCtx.removePref("videoSourceUrl")
+            else appCtx.putPrefString("videoSourceUrl", value)
+        }
+
     var bookExportFileName: String?
         get() = appCtx.getPrefString(PreferKey.bookExportFileName)
         set(value) {
