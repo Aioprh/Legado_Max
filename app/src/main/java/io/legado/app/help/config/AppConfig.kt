@@ -444,6 +444,41 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         get() = appCtx.getPrefInt(PreferKey.modernDiscoveryLayout, 2).coerceIn(0, 2)
         set(value) = appCtx.putPrefInt(PreferKey.modernDiscoveryLayout, value.coerceIn(0, 2))
 
+    data class VideoHistoryItem(
+        val name: String = "",
+        val author: String = "",
+        val bookUrl: String = "",
+        val origin: String = "",
+        val coverUrl: String? = null,
+        val episodeIndex: Int = 0,
+        val episodeTitle: String = "",
+        val time: Long = 0L
+    )
+
+    /** 影视最近播放记录，独立于普通书架，不会因为观看影视而自动加入书架。 */
+    var videoHistory: List<VideoHistoryItem>
+        get() = GSON.fromJsonObject<List<VideoHistoryItem>>(appCtx.getPrefString("videoHistory"))
+            .getOrDefault(emptyList())
+        set(value) {
+            if (value.isEmpty()) appCtx.removePref("videoHistory")
+            else appCtx.putPrefString("videoHistory", GSON.toJson(value.take(20)))
+        }
+
+    fun saveVideoHistory(
+        name: String,
+        author: String,
+        bookUrl: String,
+        origin: String,
+        coverUrl: String?,
+        episodeIndex: Int,
+        episodeTitle: String
+    ) {
+        val item = VideoHistoryItem(name, author, bookUrl, origin, coverUrl, episodeIndex, episodeTitle, System.currentTimeMillis())
+        videoHistory = listOf(item) + videoHistory.filterNot {
+            it.bookUrl == bookUrl && it.origin == origin
+        }
+    }
+
     /** 当前影视页选择的影视书源 URL；影视分类完全由该书源提供。 */
     var videoSourceUrl: String?
         get() = appCtx.getPrefString("videoSourceUrl")
