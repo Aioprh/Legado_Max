@@ -893,9 +893,11 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             val stored = appCtx.getPrefString(PreferKey.navItemOrder)
             if (!stored.isNullOrBlank()) {
                 val parsed = stored.split(",").filter { it.isNotBlank() }
-                if (parsed.isNotEmpty()) return parsed
+                if (parsed.isNotEmpty()) {
+                    return (parsed + "video").distinct()
+                }
             }
-            return listOf("bookshelf", "homepage", "explore", "rss", "my")
+            return listOf("bookshelf", "homepage", "explore", "rss", "video", "my")
         }
 
     fun setNavItemOrder(order: List<String>) {
