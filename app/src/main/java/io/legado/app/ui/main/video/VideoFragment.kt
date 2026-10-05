@@ -5,23 +5,30 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
+import android.widget.ImageView
+import android.widget.Toast
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.view.setPadding
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import com.bumptech.glide.Glide
 import com.google.android.flexbox.FlexboxLayout
 import io.legado.app.R
 import io.legado.app.constant.BookSourceType
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookSourcePart
+import io.legado.app.data.entities.SearchBook
 import io.legado.app.data.entities.rule.ExploreKind
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.source.exploreKinds
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.ui.book.explore.ExploreShowActivity
+import io.legado.app.model.webBook.WebBook
 import io.legado.app.ui.main.MainFragmentInterface
 import io.legado.app.ui.main.MainActivity
 import io.legado.app.ui.widget.SourceSelectDialog
@@ -51,6 +58,8 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
     private lateinit var sourceButton: TextView
     private lateinit var categoryContainer: FlexboxLayout
     private lateinit var sourceHint: TextView
+    private lateinit var featuredTitle: TextView
+    private lateinit var featuredContainer: LinearLayout
 
     private var currentSource: BookSourcePart? = null
     private var currentKinds: List<ExploreKind> = emptyList()
@@ -87,9 +96,7 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
             gravity = Gravity.CENTER
             setTextColor(primaryTextColor)
             setPadding(10.dpToPx())
-            setOnClickListener {
-                toastOnUi("影视搜索将使用当前影视书源")
-            }
+            setOnClickListener { showSearchDialog() }
         }
         header.addView(search, LinearLayout.LayoutParams(52.dpToPx(), 52.dpToPx()))
 
@@ -115,12 +122,23 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
         root.addView(categoryScroll)
 
         val title = TextView(requireContext()).apply {
-            text = "影视"
+            text = "推荐"
             textSize = 24f
             setTextColor(primaryTextColor)
             setPadding(20.dpToPx(), 12.dpToPx(), 20.dpToPx(), 8.dpToPx())
         }
-        root.addView(title)
+        root.addView(featuredTitle)
+
+        val featuredScroll = HorizontalScrollView(requireContext()).apply {
+            isHorizontalScrollBarEnabled = false
+            clipToPadding = false
+            setPadding(16.dpToPx(), 0, 16.dpToPx(), 12.dpToPx())
+        }
+        featuredContainer = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+        featuredScroll.addView(featuredContainer)
+        root.addView(featuredScroll)
 
         val desc = TextView(requireContext()).apply {
             text = "内容、分类和目录均来自当前影视书源"
@@ -220,6 +238,7 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
             if (!isAdded || currentSource?.bookSourceUrl != part.bookSourceUrl) return@launch
             currentKinds = kinds
             renderCategories(kinds)
+            loadFeatured(part, kinds.firstOrNull())
         }
     }
 
@@ -253,6 +272,126 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
                 }
             )
         }
+    }
+
+    private fun loadFeatured(part: BookSourcePart, kind: ExploreKind?) {
+        featuredContainer.removeAllViews()
+        featuredTitle.text = kind?.title?.takeIf { it.isNotBlank() } ?: "推荐"
+        val url = kind?.url ?: run {
+            sourceHint.text = "当前影视书源没有可展示的发现内容"
+            sourceHint.visibility = View.VISIBLE
+            return
+        }
+        lifecycleScope.launch {
+            val books = withContext(IO) {
+                runCatching {
+                    WebBook.exploreBookAwait(
+                        part.getBookSource() ?: return@runCatching emptyList(),
+                        url,
+                        1
+                    ).take(12)
+                }.getOrElse { emptyList() }
+            }
+            if (!isAdded || currentSource?.bookSourceUrl != part.bookSourceUrl) return@launch
+            renderFeatured(books)
+        }
+    }
+
+    private fun renderFeatured(books: List<SearchBook>) {
+        featuredContainer.removeAllViews()
+        if (books.isEmpty()) {
+            sourceHint.text = "当前分类暂时没有解析到影视内容"
+            sourceHint.visibility = View.VISIBLE
+            return
+        }
+        sourceHint.visibility = View.GONE
+        books.forEach { book ->
+            val card = LinearLayout(requireContext()).apply {
+                orientation = LinearLayout.VERTICAL
+                isClickable = true
+                setPadding(0, 0, 8.dpToPx(), 0)
+                setOnClickListener {
+                    startActivity<io.legado.app.ui.video.VideoDetailActivity> {
+                        putExtra("name", book.name)
+                        putExtra("author", book.author)
+                        putExtra("bookUrl", book.bookUrl)
+                        putExtra("origin", book.origin)
+                    }
+                }
+            }
+            val cover = ImageView(requireContext()).apply {
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                setBackgroundResource(R.drawable.bg_popup_menu)
+                if (!book.coverUrl.isNullOrBlank()) {
+                    Glide.with(this@VideoFragment).load(book.coverUrl)
+                        .placeholder(R.drawable.ic_cover_default).into(this)
+                }
+            }
+            card.addView(cover, LinearLayout.LayoutParams(116.dpToPx(), 166.dpToPx()))
+            card.addView(TextView(requireContext()).apply {
+                text = book.name.ifBlank { "未命名" }
+                textSize = 14f
+                setTextColor(primaryTextColor)
+                maxLines = 2
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setPadding(2.dpToPx(), 7.dpToPx(), 2.dpToPx(), 0)
+            }, LinearLayout.LayoutParams(116.dpToPx(), ViewGroup.LayoutParams.WRAP_CONTENT))
+            featuredContainer.addView(card)
+        }
+    }
+
+    private fun showSearchDialog() {
+        val source = currentSource ?: run {
+            toastOnUi("暂无可用的影视书源")
+            return
+        }
+        val input = EditText(requireContext()).apply {
+            hint = "搜索影视名称"
+            setSingleLine(true)
+            setPadding(20.dpToPx(), 8.dpToPx(), 20.dpToPx(), 8.dpToPx())
+        }
+        AlertDialog.Builder(requireContext())
+            .setTitle("影视搜索 · ${source.bookSourceName}")
+            .setView(input)
+            .setNegativeButton("取消", null)
+            .setPositiveButton("搜索") { _, _ ->
+                val key = input.text.toString().trim()
+                if (key.isBlank()) return@setPositiveButton
+                lifecycleScope.launch {
+                    val books = withContext(IO) {
+                        runCatching {
+                            WebBook.searchBookAwait(
+                                source.getBookSource() ?: return@runCatching emptyList(),
+                                key,
+                                1
+                            ).take(20)
+                        }.getOrElse { emptyList() }
+                    }
+                    if (!isAdded) return@launch
+                    showSearchResults(books)
+                }
+            }.show()
+    }
+
+    private fun showSearchResults(books: List<SearchBook>) {
+        if (books.isEmpty()) {
+            Toast.makeText(requireContext(), "没有搜索到结果", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val names = books.map { it.name.ifBlank { "未命名" } }.toTypedArray()
+        AlertDialog.Builder(requireContext())
+            .setTitle("搜索结果")
+            .setItems(names) { _, which ->
+                val book = books[which]
+                startActivity<io.legado.app.ui.video.VideoDetailActivity> {
+                    putExtra("name", book.name)
+                    putExtra("author", book.author)
+                    putExtra("bookUrl", book.bookUrl)
+                    putExtra("origin", book.origin)
+                }
+            }
+            .setNegativeButton("关闭", null)
+            .show()
     }
 
     private fun openCategory(kind: ExploreKind) {
