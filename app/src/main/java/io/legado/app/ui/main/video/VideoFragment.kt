@@ -262,6 +262,7 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
             putExtra("sourceUrl", source.bookSourceUrl)
             putExtra("exploreUrl", url)
             putExtra("exploreName", kind.title)
+            putExtra("videoMode", true)
         }
     }
 
