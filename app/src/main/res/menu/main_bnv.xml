@@ -20,6 +20,10 @@
         android:icon="@drawable/ic_bottom_rss_feed"
         android:title="@string/rss" />
     <item
+        android:id="@+id/menu_video"
+        android:icon="@drawable/ic_play_outline_24dp"
+        android:title="@string/video" />
+    <item
         android:id="@+id/menu_my_config"
         android:icon="@drawable/ic_bottom_person"
         android:title="@string/my" />
