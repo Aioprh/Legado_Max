@@ -18,6 +18,7 @@ import io.legado.app.constant.SourceType
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
+import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.ui.book.info.BookInfoViewModel
@@ -43,6 +44,10 @@ class VideoDetailActivity : AppCompatActivity() {
         viewModel.bookData.observe(this) { book = it; renderBook(it) }
         viewModel.chapterListData.observe(this) { chapters = it; renderEpisodes(it) }
         viewModel.initData(intent)
+        val resumeEpisode = intent.getIntExtra("episodeIndex", -1)
+        if (resumeEpisode >= 0) {
+            window.decorView.postDelayed({ playEpisode(resumeEpisode) }, 350)
+        }
     }
 
     private fun renderBook(book: Book) {
@@ -124,6 +129,15 @@ class VideoDetailActivity : AppCompatActivity() {
         if (chapters.isEmpty()) { toastOnUi("目录尚未加载完成"); return }
         lifecycleScope.launch(IO) {
             appDb.bookChapterDao.insert(*chapters.toTypedArray())
+            AppConfig.saveVideoHistory(
+                name = b.name,
+                author = b.author,
+                bookUrl = b.bookUrl,
+                origin = b.origin,
+                coverUrl = b.getDisplayCover(),
+                episodeIndex = index.coerceIn(0, chapters.lastIndex),
+                episodeTitle = chapters[index.coerceIn(0, chapters.lastIndex)].title
+            )
             withContext(Dispatchers.Main) { startActivity<VideoPlayerActivity> { putExtra("isNew",true); putExtra("sourceKey",b.origin); putExtra("sourceType",SourceType.book); putExtra("bookUrl",b.bookUrl); putExtra("episodeIndex",index) } }
         }
     }
