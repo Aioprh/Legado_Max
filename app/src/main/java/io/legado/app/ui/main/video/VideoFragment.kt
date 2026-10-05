@@ -222,7 +222,7 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
                 scaleType = ImageView.ScaleType.CENTER_CROP
                 if (!item.coverUrl.isNullOrBlank()) {
                     Glide.with(this@VideoFragment).load(item.coverUrl)
-                        .placeholder(R.drawable.ic_cover_default).into(this)
+                        .placeholder(R.drawable.image_cover_default).into(this)
                 }
             }
             card.addView(cover, LinearLayout.LayoutParams(72.dpToPx(), 102.dpToPx()))
@@ -382,7 +382,7 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
             }
             if (!isAdded || currentSource?.bookSourceUrl != part.bookSourceUrl) return@launch
             renderFeatured(books)
-            loadCategorySections(part, kinds.drop(1).take(4))
+            loadCategorySections(part, currentKinds.drop(1).take(4))
         }
     }
 
@@ -433,7 +433,7 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
                         scaleType = ImageView.ScaleType.CENTER_CROP
                         if (!book.coverUrl.isNullOrBlank()) {
                             Glide.with(this@VideoFragment).load(book.coverUrl)
-                                .placeholder(R.drawable.ic_cover_default).into(this)
+                                .placeholder(R.drawable.image_cover_default).into(this)
                         }
                     }
                     card.addView(cover, LinearLayout.LayoutParams(104.dpToPx(), 150.dpToPx()))
@@ -481,7 +481,7 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
             scaleType = ImageView.ScaleType.CENTER_CROP
             if (!heroBook.coverUrl.isNullOrBlank()) {
                 Glide.with(this@VideoFragment).load(heroBook.coverUrl)
-                    .placeholder(R.drawable.ic_cover_default).into(this)
+                    .placeholder(R.drawable.image_cover_default).into(this)
             }
         }
         hero.addView(heroCover, LinearLayout.LayoutParams(150.dpToPx(), 210.dpToPx()))
@@ -533,7 +533,7 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
                 setBackgroundResource(R.drawable.bg_popup_menu)
                 if (!book.coverUrl.isNullOrBlank()) {
                     Glide.with(this@VideoFragment).load(book.coverUrl)
-                        .placeholder(R.drawable.ic_cover_default).into(this)
+                        .placeholder(R.drawable.image_cover_default).into(this)
                 }
             }
             card.addView(cover, LinearLayout.LayoutParams(116.dpToPx(), 166.dpToPx()))
