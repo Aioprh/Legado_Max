@@ -60,6 +60,7 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
     private lateinit var sourceHint: TextView
     private lateinit var featuredTitle: TextView
     private lateinit var featuredContainer: LinearLayout
+    private lateinit var heroContainer: LinearLayout
 
     private var currentSource: BookSourcePart? = null
     private var currentKinds: List<ExploreKind> = emptyList()
@@ -120,6 +121,12 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
         }
         categoryScroll.addView(categoryContainer)
         root.addView(categoryScroll)
+
+        heroContainer = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(16.dpToPx(), 4.dpToPx(), 16.dpToPx(), 4.dpToPx())
+        }
+        root.addView(heroContainer)
 
         featuredTitle = TextView(requireContext()).apply {
             text = "推荐"
@@ -299,12 +306,67 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
 
     private fun renderFeatured(books: List<SearchBook>) {
         featuredContainer.removeAllViews()
+        heroContainer.removeAllViews()
         if (books.isEmpty()) {
             sourceHint.text = "当前分类暂时没有解析到影视内容"
             sourceHint.visibility = View.VISIBLE
             return
         }
         sourceHint.visibility = View.GONE
+
+        val heroBook = books.first()
+        val hero = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, 0, 0, 4.dpToPx())
+            isClickable = true
+            background = requireContext().getDrawable(R.drawable.bg_popup_menu)
+            setOnClickListener {
+                startActivity<io.legado.app.ui.video.VideoDetailActivity> {
+                    putExtra("name", heroBook.name)
+                    putExtra("author", heroBook.author)
+                    putExtra("bookUrl", heroBook.bookUrl)
+                    putExtra("origin", heroBook.origin)
+                }
+            }
+        }
+        val heroCover = ImageView(requireContext()).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            if (!heroBook.coverUrl.isNullOrBlank()) {
+                Glide.with(this@VideoFragment).load(heroBook.coverUrl)
+                    .placeholder(R.drawable.ic_cover_default).into(this)
+            }
+        }
+        hero.addView(heroCover, LinearLayout.LayoutParams(150.dpToPx(), 210.dpToPx()))
+        hero.addView(LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(16.dpToPx(), 12.dpToPx(), 16.dpToPx(), 12.dpToPx())
+            addView(TextView(context).apply {
+                text = heroBook.name.ifBlank { "未命名" }
+                textSize = 23f
+                setTextColor(primaryTextColor)
+                maxLines = 2
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            })
+            addView(TextView(context).apply {
+                text = heroBook.author.ifBlank { "影视内容" }
+                textSize = 14f
+                setTextColor(primaryTextColor)
+                alpha = .68f
+                maxLines = 2
+                setPadding(0, 8.dpToPx(), 0, 8.dpToPx())
+            })
+            addView(TextView(context).apply {
+                text = "来自当前影视书源 · 点击查看详情"
+                textSize = 13f
+                setTextColor(primaryTextColor)
+                alpha = .55f
+            })
+        }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        heroContainer.addView(hero, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        ))
+
         books.forEach { book ->
             val card = LinearLayout(requireContext()).apply {
                 orientation = LinearLayout.VERTICAL
