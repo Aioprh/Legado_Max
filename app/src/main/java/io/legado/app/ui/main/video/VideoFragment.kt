@@ -170,6 +170,11 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
         featuredScroll.addView(featuredContainer)
         root.addView(featuredScroll)
 
+        categorySectionsContainer = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        root.addView(categorySectionsContainer)
+
         val desc = TextView(requireContext()).apply {
             text = "内容、分类和目录均来自当前影视书源"
             textSize = 14f
