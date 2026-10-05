@@ -67,13 +67,13 @@ class VideoDetailActivity : AppCompatActivity() {
         items.forEachIndexed { index, chapter -> content.addView(TextView(this).apply { text=(index+1).toString()+". "+chapter.title; textSize=15f; setTextColor(primaryTextColor); gravity=Gravity.CENTER_VERTICAL; setPadding(16.dpToPx(),14.dpToPx(),16.dpToPx(),14.dpToPx()); setBackgroundResource(R.drawable.bg_popup_menu); tag="episode"; setOnClickListener { playEpisode(index) } }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin=6.dpToPx() }) }
     }
 
-    private fun playEpisode(index: Int) { playCurrent() }
-    private fun playCurrent() {
+    private fun playEpisode(index: Int) { playCurrent(index) }
+    private fun playCurrent(index: Int = 0) {
         val b=book ?: return
         if (chapters.isEmpty()) { toastOnUi("目录尚未加载完成"); return }
         lifecycleScope.launch(IO) {
             appDb.bookChapterDao.insert(*chapters.toTypedArray())
-            withContext(Dispatchers.Main) { startActivity<VideoPlayerActivity> { putExtra("isNew",true); putExtra("sourceKey",b.origin); putExtra("sourceType",SourceType.book); putExtra("bookUrl",b.bookUrl) } }
+            withContext(Dispatchers.Main) { startActivity<VideoPlayerActivity> { putExtra("isNew",true); putExtra("sourceKey",b.origin); putExtra("sourceType",SourceType.book); putExtra("bookUrl",b.bookUrl); putExtra("episodeIndex",index) } }
         }
     }
 }
