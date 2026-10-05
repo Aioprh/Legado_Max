@@ -34,6 +34,7 @@ class VideoDetailActivity : AppCompatActivity() {
     private lateinit var content: LinearLayout
     private var book: Book? = null
     private var chapters: List<BookChapter> = emptyList()
+    private var pendingResumeEpisode = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,12 +43,17 @@ class VideoDetailActivity : AppCompatActivity() {
         scroll.addView(content); setContentView(scroll)
         content.addView(TextView(this).apply { text = "‹  影视详情"; textSize = 20f; setTextColor(primaryTextColor); gravity = Gravity.CENTER_VERTICAL; setPadding(4.dpToPx(),18.dpToPx(),4.dpToPx(),14.dpToPx()); setOnClickListener { finish() } })
         viewModel.bookData.observe(this) { book = it; renderBook(it) }
-        viewModel.chapterListData.observe(this) { chapters = it; renderEpisodes(it) }
-        viewModel.initData(intent)
-        val resumeEpisode = intent.getIntExtra("episodeIndex", -1)
-        if (resumeEpisode >= 0) {
-            window.decorView.postDelayed({ playEpisode(resumeEpisode) }, 350)
+        viewModel.chapterListData.observe(this) {
+            chapters = it
+            renderEpisodes(it)
+            if (it.isNotEmpty() && pendingResumeEpisode >= 0) {
+                val index = pendingResumeEpisode.coerceIn(0, it.lastIndex)
+                pendingResumeEpisode = -1
+                playEpisode(index)
+            }
         }
+        pendingResumeEpisode = intent.getIntExtra("episodeIndex", -1)
+        viewModel.initData(intent)
     }
 
     private fun renderBook(book: Book) {
