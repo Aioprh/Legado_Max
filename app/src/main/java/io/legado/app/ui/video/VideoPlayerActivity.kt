@@ -258,6 +258,10 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
             finish()
             return
         }
+        val requestedEpisode = intent.getIntExtra("episodeIndex", -1)
+        if (requestedEpisode >= 0 && !VideoPlay.episodes.isNullOrEmpty()) {
+            VideoPlay.chapterInVolumeIndex = requestedEpisode.coerceIn(0, VideoPlay.episodes!!.lastIndex)
+        }
         VideoPlay.startPlay(playerView)
         VideoPlay.saveRead()
     }
