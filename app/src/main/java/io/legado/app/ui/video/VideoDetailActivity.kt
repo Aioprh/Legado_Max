@@ -127,7 +127,7 @@ class VideoDetailActivity : AppCompatActivity() {
 
     private fun roundedBackground(primary: Boolean): GradientDrawable = GradientDrawable().apply {
         cornerRadius = 18.dpToPx().toFloat()
-        setColor(if (primary) io.legado.app.lib.theme.accentColor else backgroundColor)
+        setColor(if (primary) accentColor else backgroundColor)
         setStroke(1.dpToPx(), Color.argb(if (primary) 45 else 25, Color.red(primaryTextColor), Color.green(primaryTextColor), Color.blue(primaryTextColor)))
     }
 
