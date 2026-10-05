@@ -63,6 +63,7 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
     private lateinit var heroContainer: LinearLayout
     private lateinit var historyContainer: LinearLayout
     private lateinit var historyTitle: TextView
+    private lateinit var categorySectionsContainer: LinearLayout
 
     private var currentSource: BookSourcePart? = null
     private var currentKinds: List<ExploreKind> = emptyList()
@@ -378,6 +379,72 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
             }
             if (!isAdded || currentSource?.bookSourceUrl != part.bookSourceUrl) return@launch
             renderFeatured(books)
+            loadCategorySections(part, kinds.drop(1).take(4))
+        }
+    }
+
+    private fun loadCategorySections(part: BookSourcePart, kinds: List<ExploreKind>) {
+        categorySectionsContainer.removeAllViews()
+        if (kinds.isEmpty()) return
+        kinds.forEach { kind ->
+            val title = TextView(requireContext()).apply {
+                text = kind.title
+                textSize = 20f
+                setTextColor(primaryTextColor)
+                setPadding(20.dpToPx(), 12.dpToPx(), 20.dpToPx(), 7.dpToPx())
+            }
+            categorySectionsContainer.addView(title)
+            val scroll = HorizontalScrollView(requireContext()).apply {
+                isHorizontalScrollBarEnabled = false
+                clipToPadding = false
+                setPadding(16.dpToPx(), 0, 16.dpToPx(), 8.dpToPx())
+            }
+            val cards = LinearLayout(requireContext()).apply {
+                orientation = LinearLayout.HORIZONTAL
+            }
+            scroll.addView(cards)
+            categorySectionsContainer.addView(scroll)
+            lifecycleScope.launch {
+                val books = withContext(IO) {
+                    runCatching {
+                        val source = part.getBookSource() ?: return@runCatching emptyList<SearchBook>()
+                        WebBook.exploreBookAwait(source, kind.url.orEmpty(), 1).take(10)
+                    }.getOrElse { emptyList() }
+                }
+                if (!isAdded || currentSource?.bookSourceUrl != part.bookSourceUrl) return@launch
+                books.forEach { book ->
+                    val card = LinearLayout(requireContext()).apply {
+                        orientation = LinearLayout.VERTICAL
+                        isClickable = true
+                        setPadding(0, 0, 8.dpToPx(), 0)
+                        setOnClickListener {
+                            startActivity<io.legado.app.ui.video.VideoDetailActivity> {
+                                putExtra("name", book.name)
+                                putExtra("author", book.author)
+                                putExtra("bookUrl", book.bookUrl)
+                                putExtra("origin", book.origin)
+                            }
+                        }
+                    }
+                    val cover = ImageView(requireContext()).apply {
+                        scaleType = ImageView.ScaleType.CENTER_CROP
+                        if (!book.coverUrl.isNullOrBlank()) {
+                            Glide.with(this@VideoFragment).load(book.coverUrl)
+                                .placeholder(R.drawable.ic_cover_default).into(this)
+                        }
+                    }
+                    card.addView(cover, LinearLayout.LayoutParams(104.dpToPx(), 150.dpToPx()))
+                    card.addView(TextView(requireContext()).apply {
+                        text = book.name.ifBlank { "未命名" }
+                        textSize = 13f
+                        setTextColor(primaryTextColor)
+                        maxLines = 2
+                        ellipsize = android.text.TextUtils.TruncateAt.END
+                        setPadding(2.dpToPx(), 6.dpToPx(), 2.dpToPx(), 0)
+                    }, LinearLayout.LayoutParams(104.dpToPx(), ViewGroup.LayoutParams.WRAP_CONTENT))
+                    cards.addView(card)
+                }
+            }
         }
     }
 
