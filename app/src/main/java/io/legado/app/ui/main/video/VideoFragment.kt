@@ -121,7 +121,7 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
         categoryScroll.addView(categoryContainer)
         root.addView(categoryScroll)
 
-        val title = TextView(requireContext()).apply {
+        featuredTitle = TextView(requireContext()).apply {
             text = "推荐"
             textSize = 24f
             setTextColor(primaryTextColor)
