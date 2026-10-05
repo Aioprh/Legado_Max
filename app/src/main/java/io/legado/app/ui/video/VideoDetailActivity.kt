@@ -6,7 +6,6 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.ImageView
-import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -19,7 +18,6 @@ import io.legado.app.constant.SourceType
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
-import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.ui.book.info.BookInfoViewModel
