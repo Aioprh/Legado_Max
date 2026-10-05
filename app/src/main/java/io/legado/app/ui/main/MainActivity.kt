@@ -63,6 +63,7 @@ import io.legado.app.ui.main.explore.ExploreFragment
 import io.legado.app.ui.main.homepage.HomepageFragment
 import io.legado.app.ui.main.my.MyFragment
 import io.legado.app.ui.main.rss.RssFragment
+import io.legado.app.ui.main.video.VideoFragment
 import io.legado.app.ui.widget.StableLiquidGlassView
 import io.legado.app.ui.widget.dialog.TextDialog
 import io.legado.app.ui.widget.text.BadgeView
@@ -119,14 +120,15 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     private val idRss = 2
     private val idMy = 3
     private val idHomepage = 4
+    private val idVideo = 5
     private var exitTime: Long = 0
     private var bookshelfReselected: Long = 0
     private var exploreReselected: Long = 0
     private var pagePosition = 0
     private val fragmentMap = hashMapOf<Int, Fragment>()
-    private var bottomMenuCount = 5
+    private var bottomMenuCount = 6
     private val EXIT_INTERVAL = 2000L
-    private val realPositions = arrayOf(idHomepage, idBookshelf, idExplore, idRss, idMy)
+    private val realPositions = IntArray(8)
     private val adapter by lazy {
         TabFragmentPageAdapter(supportFragmentManager)
     }
@@ -142,6 +144,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         idExplore -> R.id.menu_discovery
         idRss -> R.id.menu_rss
         idMy -> R.id.menu_my_config
+        idVideo -> R.id.menu_video
         else -> R.id.menu_bookshelf
     }
 
@@ -271,6 +274,9 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
 
             R.id.menu_my_config ->
                 viewPagerMain.setCurrentItem(realPositions.indexOf(idMy), false)
+
+            R.id.menu_video ->
+                viewPagerMain.setCurrentItem(realPositions.indexOf(idVideo), false)
         }
         return false
     }
@@ -300,7 +306,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         // offscreenPageLimit 设为 4，确保 5 个 Tab 互相切换时 Fragment 都不会被销毁重建。
         // 之前值为 3 时，从 position 4（我的）切到 position 0（书架）距离为 4 超过预加载范围，
         // 导致书架 Fragment 被销毁重建，重新走 upGroup 流程产生分组闪烁。
-        viewPagerMain.offscreenPageLimit = 4
+        viewPagerMain.offscreenPageLimit = 5
         viewPagerMain.adapter = adapter
         viewPagerMain.addOnPageChangeListener(PageChangeCallback())
         bottomNavigationView.setOnNavigationItemSelectedListener(this@MainActivity)
@@ -590,6 +596,13 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
                         .setIcon(R.drawable.ic_bottom_person)
                     index++
                 }
+
+                "video" -> {
+                    realPositions[index] = idVideo
+                    menu.add(0, R.id.menu_video, index, R.string.video)
+                        .setIcon(R.drawable.ic_play_outline_24dp)
+                    index++
+                }
             }
         }
         bottomMenuCount = index
@@ -613,6 +626,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
             "explore" -> idExplore
             "rss" -> idRss
             "my" -> idMy
+            "video" -> idVideo
             else -> idBookshelf
         }
         val position = realPositions.indexOf(fragmentId)
@@ -658,6 +672,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
                 || (fragmentId == idExplore && any is ExploreFragment)
                 || (fragmentId == idRss && any is RssFragment)
                 || (fragmentId == idMy && any is MyFragment)
+                || (fragmentId == idVideo && any is VideoFragment)
             ) {
                 return POSITION_UNCHANGED
             }
@@ -671,6 +686,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
                 idHomepage -> HomepageFragment(position)
                 idExplore -> ExploreFragment(position)
                 idRss -> RssFragment(position)
+                idVideo -> VideoFragment(position)
                 else -> MyFragment(position)
             }
         }
