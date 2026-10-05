@@ -637,6 +637,7 @@
     <string name="line_number">第 %d 行</string>
     <string name="search_doc_result_count">%d 条匹配</string>
     <string name="search_help">搜索帮助</string>
+    <string name="video">影视</string>
     <string name="my">我的</string>
     <string name="reading">阅读</string>
     <string name="battery_show">%d%%</string>
