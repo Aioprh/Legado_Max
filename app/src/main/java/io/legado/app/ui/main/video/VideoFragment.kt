@@ -265,7 +265,8 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
                     }
                     .sortedBy { it.customOrder }
             }
-            if (!isAdded) return@launch
+            // isAdded 只代表已附着，视图可能尚未创建或已销毁，直接触碰 lateinit 视图字段会崩
+            if (!isAdded || view == null) return@launch
             if (sources.isEmpty()) {
                 currentSource = null
                 sourceButton.text = "影视书源"
@@ -325,7 +326,7 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
                     .getOrElse { emptyList() }
                     .filter { !it.url.isNullOrBlank() }
             }
-            if (!isAdded || currentSource?.bookSourceUrl != part.bookSourceUrl) return@launch
+            if (!isAdded || view == null || currentSource?.bookSourceUrl != part.bookSourceUrl) return@launch
             currentKinds = kinds
             categorySectionsContainer.removeAllViews()
             heroContainer.removeAllViews()
@@ -385,7 +386,7 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
                     ).take(12)
                 }.getOrElse { emptyList() }
             }
-            if (!isAdded || currentSource?.bookSourceUrl != part.bookSourceUrl) return@launch
+            if (!isAdded || view == null || currentSource?.bookSourceUrl != part.bookSourceUrl) return@launch
             renderFeatured(books)
             loadCategorySections(part, currentKinds.drop(1).take(4))
         }
@@ -419,7 +420,7 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
                         WebBook.exploreBookAwait(source, kind.url.orEmpty(), 1).take(10)
                     }.getOrElse { emptyList() }
                 }
-                if (!isAdded || currentSource?.bookSourceUrl != part.bookSourceUrl) return@launch
+                if (!isAdded || view == null || currentSource?.bookSourceUrl != part.bookSourceUrl) return@launch
                 books.forEach { book ->
                     val card = LinearLayout(requireContext()).apply {
                         orientation = LinearLayout.VERTICAL
@@ -581,7 +582,7 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
                             ).take(20)
                         }.getOrElse { emptyList() }
                     }
-                    if (!isAdded) return@launch
+                    if (!isAdded || view == null) return@launch
                     showSearchResults(books)
                 }
             }.show()
