@@ -322,6 +322,9 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
             }
             if (!isAdded || currentSource?.bookSourceUrl != part.bookSourceUrl) return@launch
             currentKinds = kinds
+            categorySectionsContainer.removeAllViews()
+            heroContainer.removeAllViews()
+            featuredContainer.removeAllViews()
             renderCategories(kinds)
             loadFeatured(part, kinds.firstOrNull())
         }
