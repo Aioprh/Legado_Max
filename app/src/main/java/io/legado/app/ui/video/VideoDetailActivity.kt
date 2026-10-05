@@ -20,11 +20,13 @@ import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.backgroundColor
+import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.ui.book.info.BookInfoViewModel
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.toastOnUi
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -62,7 +64,7 @@ class VideoDetailActivity : AppCompatActivity() {
         val cover = ImageView(this).apply { scaleType = ImageView.ScaleType.CENTER_CROP }
         hero.addView(cover, LinearLayout.LayoutParams(128.dpToPx(),184.dpToPx()))
         val coverUrl = book.customCoverUrl?.takeIf { it.isNotBlank() } ?: book.coverUrl
-        if (!coverUrl.isNullOrBlank()) Glide.with(this).load(coverUrl).placeholder(R.drawable.ic_cover_default).into(cover)
+        if (!coverUrl.isNullOrBlank()) Glide.with(this).load(coverUrl).placeholder(R.drawable.image_cover_default).into(cover)
         val info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(16.dpToPx(),0,0,0) }
         info.addView(TextView(this).apply { text = book.name; textSize = 25f; setTextColor(primaryTextColor) })
         info.addView(TextView(this).apply { text = "作者：" + book.author.ifBlank { "暂无" }; textSize = 15f; setTextColor(primaryTextColor); alpha=.7f; setPadding(0,8.dpToPx(),0,4.dpToPx()) })
