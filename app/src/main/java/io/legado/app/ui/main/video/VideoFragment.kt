@@ -61,6 +61,8 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
     private lateinit var featuredTitle: TextView
     private lateinit var featuredContainer: LinearLayout
     private lateinit var heroContainer: LinearLayout
+    private lateinit var historyContainer: LinearLayout
+    private lateinit var historyTitle: TextView
 
     private var currentSource: BookSourcePart? = null
     private var currentKinds: List<ExploreKind> = emptyList()
@@ -128,6 +130,26 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
         }
         root.addView(heroContainer)
 
+        historyTitle = TextView(requireContext()).apply {
+            text = "继续观看"
+            textSize = 22f
+            setTextColor(primaryTextColor)
+            setPadding(20.dpToPx(), 14.dpToPx(), 20.dpToPx(), 8.dpToPx())
+            visibility = View.GONE
+        }
+        root.addView(historyTitle)
+
+        val historyScroll = HorizontalScrollView(requireContext()).apply {
+            isHorizontalScrollBarEnabled = false
+            clipToPadding = false
+            setPadding(16.dpToPx(), 0, 16.dpToPx(), 10.dpToPx())
+        }
+        historyContainer = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+        historyScroll.addView(historyContainer)
+        root.addView(historyScroll)
+
         featuredTitle = TextView(requireContext()).apply {
             text = "推荐"
             textSize = 24f
@@ -162,12 +184,67 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         updateMainBottomPadding((activity as? MainActivity)?.mainContentBottomPadding() ?: 0)
+        renderHistory()
         loadSources()
     }
 
     override fun onResume() {
         super.onResume()
-        if (view != null) loadSources()
+        if (view != null) {
+            renderHistory()
+            loadSources()
+        }
+    }
+
+    private fun renderHistory() {
+        historyContainer.removeAllViews()
+        val history = AppConfig.videoHistory
+        historyTitle.visibility = if (history.isEmpty()) View.GONE else View.VISIBLE
+        if (history.isEmpty()) return
+        history.forEach { item ->
+            val card = LinearLayout(requireContext()).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, 0, 10.dpToPx(), 0)
+                isClickable = true
+                setOnClickListener {
+                    startActivity<io.legado.app.ui.video.VideoDetailActivity> {
+                        putExtra("name", item.name)
+                        putExtra("author", item.author)
+                        putExtra("bookUrl", item.bookUrl)
+                        putExtra("origin", item.origin)
+                        putExtra("episodeIndex", item.episodeIndex)
+                    }
+                }
+            }
+            val cover = ImageView(requireContext()).apply {
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                if (!item.coverUrl.isNullOrBlank()) {
+                    Glide.with(this@VideoFragment).load(item.coverUrl)
+                        .placeholder(R.drawable.ic_cover_default).into(this)
+                }
+            }
+            card.addView(cover, LinearLayout.LayoutParams(72.dpToPx(), 102.dpToPx()))
+            card.addView(LinearLayout(requireContext()).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(10.dpToPx(), 0, 0, 0)
+                addView(TextView(context).apply {
+                    text = item.name.ifBlank { "未命名" }
+                    textSize = 15f
+                    setTextColor(primaryTextColor)
+                    maxLines = 2
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                })
+                addView(TextView(context).apply {
+                    text = if (item.episodeTitle.isBlank()) "第" + (item.episodeIndex + 1) + "集" else item.episodeTitle
+                    textSize = 13f
+                    setTextColor(primaryTextColor)
+                    alpha = .62f
+                    setPadding(0, 6.dpToPx(), 0, 0)
+                })
+            }, LinearLayout.LayoutParams(150.dpToPx(), ViewGroup.LayoutParams.WRAP_CONTENT))
+            historyContainer.addView(card)
+        }
     }
 
     private fun loadSources() {
