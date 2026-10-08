@@ -12,11 +12,11 @@
         android:layout_height="0dp"
         android:clipToPadding="false"
         android:overScrollMode="never"
-        android:paddingTop="2dp"
-        android:paddingBottom="2dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
         app:fadeScrollbar="false"
         app:showBubble="false"
-        app:showTrack="true"
+        app:showTrack="false"
         app:layout_constraintBottom_toTopOf="@+id/tv_toc_loading"
         app:layout_constraintTop_toTopOf="parent" />
 
