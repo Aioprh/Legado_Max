@@ -306,7 +306,7 @@ class FastScroller : LinearLayout {
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                if (event.x < mHandleView.x - ViewCompat.getPaddingStart(mHandleView)) {
+                if (event.x < mHandleView.x - ViewCompat.getPaddingStart(mHandleView) ||\n                    event.x > mHandleView.x + mHandleView.width + ViewCompat.getPaddingEnd(mHandleView)) {
                     return false
                 }
                 if (!mScrollbar.isVisible) {
@@ -567,7 +567,7 @@ class FastScroller : LinearLayout {
         private const val sBubbleAnimDuration = 100
         private const val sScrollbarAnimDuration = 300
         private const val sScrollbarHideDelay = 1000
-        private const val sTrackSnapRange = 5
+        private const val sTrackSnapRange = 8
     }
 
 }
