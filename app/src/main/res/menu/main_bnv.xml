@@ -22,7 +22,7 @@
     <item
         android:id="@+id/menu_video"
         android:icon="@drawable/ic_play_outline_24dp"
-        android:title="@string/video" />
+        android:title="@string/video_tab" />
     <item
         android:id="@+id/menu_my_config"
         android:icon="@drawable/ic_bottom_person"

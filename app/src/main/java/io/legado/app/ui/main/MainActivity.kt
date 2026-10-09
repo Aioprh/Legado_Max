@@ -126,9 +126,12 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     private var exploreReselected: Long = 0
     private var pagePosition = 0
     private val fragmentMap = hashMapOf<Int, Fragment>()
-    private var bottomMenuCount = 6
+    private var bottomMenuCount = AppConfig.navItemOrder.size
     private val EXIT_INTERVAL = 2000L
-    private val realPositions = IntArray(8)
+
+    // 长度与当前导航项数量一致，upBottomMenu() 中按实际 navOrder 重新分配，
+    // 避免使用魔数固定长度（旧实现为 IntArray(8)）
+    private var realPositions = IntArray(0)
     private val adapter by lazy {
         TabFragmentPageAdapter(supportFragmentManager)
     }
@@ -303,8 +306,8 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
 
     private fun initView() = binding.run {
         viewPagerMain.setEdgeEffectColor(primaryColor)
-        // offscreenPageLimit 设为 4，确保 5 个 Tab 互相切换时 Fragment 都不会被销毁重建。
-        // 之前值为 3 时，从 position 4（我的）切到 position 0（书架）距离为 4 超过预加载范围，
+        // offscreenPageLimit 设为 5，确保最多 6 个 Tab 互相切换时 Fragment 都不会被销毁重建。
+        // 之前值为 3 时，从最后一位切到 position 0 距离超过预加载范围，
         // 导致书架 Fragment 被销毁重建，重新走 upGroup 流程产生分组闪烁。
         viewPagerMain.offscreenPageLimit = 5
         viewPagerMain.adapter = adapter
@@ -555,6 +558,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         val showDiscovery = AppConfig.showDiscovery
         val showRss = AppConfig.showRSS
         val navOrder = AppConfig.navItemOrder
+        realPositions = IntArray(navOrder.size)
 
         val menu = binding.bottomNavigationView.menu
         menu.clear()
@@ -599,7 +603,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
 
                 "video" -> {
                     realPositions[index] = idVideo
-                    menu.add(0, R.id.menu_video, index, R.string.video)
+                    menu.add(0, R.id.menu_video, index, R.string.video_tab)
                         .setIcon(R.drawable.ic_play_outline_24dp)
                     index++
                 }

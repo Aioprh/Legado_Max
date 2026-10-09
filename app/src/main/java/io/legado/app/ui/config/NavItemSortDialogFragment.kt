@@ -92,7 +92,7 @@ class NavItemSortDialogFragment : DialogFragment() {
                     R.drawable.ic_bottom_rss_feed, showRss
                 )
                 "video" -> NavItemSortAdapter.NavItemConfig(
-                    "video", context.getString(R.string.video),
+                    "video", context.getString(R.string.video_tab),
                     R.drawable.ic_play_outline_24dp, true
                 )
                 "my" -> NavItemSortAdapter.NavItemConfig(

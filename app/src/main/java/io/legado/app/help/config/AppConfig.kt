@@ -937,7 +937,10 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             if (!stored.isNullOrBlank()) {
                 val parsed = stored.split(",").filter { it.isNotBlank() }
                 if (parsed.isNotEmpty()) {
-                    return (parsed + "video").distinct()
+                    if (parsed.contains("video")) return parsed
+                    // 旧数据可能不含 video，补到“我的”之前，与默认顺序及排序弹窗位置保持一致
+                    val insertAt = parsed.indexOf("my").let { if (it >= 0) it else parsed.size }
+                    return parsed.toMutableList().apply { add(insertAt, "video") }
                 }
             }
             return listOf("bookshelf", "homepage", "explore", "rss", "video", "my")

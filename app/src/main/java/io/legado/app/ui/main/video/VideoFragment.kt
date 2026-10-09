@@ -18,6 +18,7 @@ import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.google.android.flexbox.FlexboxLayout
 import io.legado.app.R
+import io.legado.app.constant.AppLog
 import io.legado.app.constant.BookSourceType
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookSourcePart
@@ -36,6 +37,7 @@ import io.legado.app.utils.dpToPx
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -67,6 +69,13 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
 
     private var currentSource: BookSourcePart? = null
     private var currentKinds: List<ExploreKind> = emptyList()
+
+    // 书源加载与内容加载各自的 Job；切换书源或页面时取消，避免旧请求回填与内存浪费
+    private var sourcesJob: Job? = null
+    private var categoriesJob: Job? = null
+    private var featuredJob: Job? = null
+    private val sectionJobs = mutableListOf<Job>()
+    private var sourcesLoaded = false
 
     override fun onCreateView(
         inflater: android.view.LayoutInflater,
@@ -132,7 +141,7 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
         root.addView(heroContainer)
 
         historyTitle = TextView(requireContext()).apply {
-            text = "继续观看"
+            text = getString(R.string.video_continue_watching)
             textSize = 22f
             setTextColor(primaryTextColor)
             setPadding(20.dpToPx(), 14.dpToPx(), 20.dpToPx(), 8.dpToPx())
@@ -152,7 +161,7 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
         root.addView(historyScroll)
 
         featuredTitle = TextView(requireContext()).apply {
-            text = "推荐"
+            text = getString(R.string.video_recommend)
             textSize = 24f
             setTextColor(primaryTextColor)
             setPadding(20.dpToPx(), 12.dpToPx(), 20.dpToPx(), 8.dpToPx())
@@ -176,7 +185,7 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
         root.addView(categorySectionsContainer)
 
         val desc = TextView(requireContext()).apply {
-            text = "内容、分类和目录均来自当前影视书源"
+            text = getString(R.string.video_footer_desc)
             textSize = 14f
             setTextColor(primaryTextColor)
             alpha = 0.68f
@@ -190,16 +199,33 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         updateMainBottomPadding((activity as? MainActivity)?.mainContentBottomPadding() ?: 0)
-        renderHistory()
-        loadSources()
     }
 
     override fun onResume() {
         super.onResume()
-        if (view != null) {
-            renderHistory()
+        if (view == null) return
+        // 历史记录每次回到页面都刷新；书源与发现内容只在首次进入时加载一次，
+        // 避免 onViewCreated 与 onResume 重复触发以及来回切 Tab 造成的无谓网络请求
+        renderHistory()
+        if (!sourcesLoaded) {
+            sourcesLoaded = true
             loadSources()
         }
+    }
+
+    override fun onDestroyView() {
+        sourcesJob?.cancel()
+        cancelContentLoads()
+        super.onDestroyView()
+    }
+
+    private fun cancelContentLoads() {
+        categoriesJob?.cancel()
+        categoriesJob = null
+        featuredJob?.cancel()
+        featuredJob = null
+        sectionJobs.forEach { it.cancel() }
+        sectionJobs.clear()
     }
 
     private fun renderHistory() {
@@ -235,14 +261,18 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
                 orientation = LinearLayout.VERTICAL
                 setPadding(10.dpToPx(), 0, 0, 0)
                 addView(TextView(context).apply {
-                    text = item.name.ifBlank { "未命名" }
+                    text = item.name.ifBlank { getString(R.string.video_unnamed) }
                     textSize = 15f
                     setTextColor(primaryTextColor)
                     maxLines = 2
                     ellipsize = android.text.TextUtils.TruncateAt.END
                 })
                 addView(TextView(context).apply {
-                    text = if (item.episodeTitle.isBlank()) "第" + (item.episodeIndex + 1) + "集" else item.episodeTitle
+                    text = if (item.episodeTitle.isBlank()) {
+                        getString(R.string.video_episode_n, item.episodeIndex + 1)
+                    } else {
+                        item.episodeTitle
+                    }
                     textSize = 13f
                     setTextColor(primaryTextColor)
                     alpha = .62f
@@ -254,7 +284,8 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
     }
 
     private fun loadSources() {
-        lifecycleScope.launch {
+        sourcesJob?.cancel()
+        sourcesJob = lifecycleScope.launch {
             val sources = withContext(IO) {
                 appDb.bookSourceDao.allEnabledPart
                     .filter {
@@ -269,8 +300,8 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
             if (!isAdded || view == null) return@launch
             if (sources.isEmpty()) {
                 currentSource = null
-                sourceButton.text = "影视书源"
-                sourceHint.text = "暂无启用的影视书源，请先导入并启用视频类型书源"
+                sourceButton.text = getString(R.string.video_source_default)
+                sourceHint.text = getString(R.string.video_no_source_hint)
                 sourceHint.visibility = View.VISIBLE
                 categoryContainer.removeAllViews()
                 return@launch
@@ -278,7 +309,7 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
             val saved = AppConfig.videoSourceUrl
             currentSource = sources.firstOrNull { it.bookSourceUrl == saved } ?: sources.first()
             sourceHint.visibility = View.GONE
-            sourceButton.text = currentSource?.getDisPlayNameGroup() ?: "影视书源"
+            sourceButton.text = currentSource?.getDisPlayNameGroup() ?: getString(R.string.video_source_default)
             loadCategories(currentSource)
         }
     }
@@ -295,18 +326,20 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
                     }
                     .sortedBy { it.customOrder }
             }
+            // 查询期间页面可能已 detach，需与 loadSources 保持一致做视图防护
+            if (!isAdded || view == null) return@launch
             if (sources.isEmpty()) {
-                toastOnUi("暂无可用的影视书源")
+                toastOnUi(R.string.video_no_source_available)
                 return@launch
             }
             SourceSelectDialog.show(
                 requireContext(),
-                "选择影视书源",
+                getString(R.string.video_choose_source_title),
                 sources,
                 currentSource?.bookSourceUrl,
                 { it.getDisPlayNameGroup() },
                 { listOf(it.bookSourceName, it.bookSourceGroup.orEmpty()) },
-                "搜索影视书源",
+                getString(R.string.video_search_source_hint),
                 { it.bookSourceUrl },
                 { selected ->
                     currentSource = selected
@@ -320,9 +353,11 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
 
     private fun loadCategories(part: BookSourcePart?) {
         if (part == null) return
-        lifecycleScope.launch {
+        cancelContentLoads()
+        categoriesJob = lifecycleScope.launch {
             val kinds = withContext(IO) {
                 runCatching { part.exploreKinds() }
+                    .onFailure { AppLog.put("影视分类解析失败(sourceUrl=${part.bookSourceUrl})", it) }
                     .getOrElse { emptyList() }
                     .filter { !it.url.isNullOrBlank() }
             }
@@ -339,7 +374,7 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
     private fun renderCategories(kinds: List<ExploreKind>) {
         categoryContainer.removeAllViews()
         if (kinds.isEmpty()) {
-            sourceHint.text = "当前书源没有提供可解析的影视分类"
+            sourceHint.text = getString(R.string.video_no_kinds_hint)
             sourceHint.visibility = View.VISIBLE
             return
         }
@@ -370,13 +405,14 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
 
     private fun loadFeatured(part: BookSourcePart, kind: ExploreKind?) {
         featuredContainer.removeAllViews()
-        featuredTitle.text = kind?.title?.takeIf { it.isNotBlank() } ?: "推荐"
+        featuredTitle.text = kind?.title?.takeIf { it.isNotBlank() } ?: getString(R.string.video_recommend)
         val url = kind?.url ?: run {
-            sourceHint.text = "当前影视书源没有可展示的发现内容"
+            sourceHint.text = getString(R.string.video_no_featured_hint)
             sourceHint.visibility = View.VISIBLE
             return
         }
-        lifecycleScope.launch {
+        featuredJob?.cancel()
+        featuredJob = lifecycleScope.launch {
             val books = withContext(IO) {
                 runCatching {
                     WebBook.exploreBookAwait(
@@ -384,7 +420,8 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
                         url,
                         1
                     ).take(12)
-                }.getOrElse { emptyList() }
+                }.onFailure { AppLog.put("影视发现内容加载失败(url=$url)", it) }
+                    .getOrElse { emptyList() }
             }
             if (!isAdded || view == null || currentSource?.bookSourceUrl != part.bookSourceUrl) return@launch
             renderFeatured(books)
@@ -393,6 +430,8 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
     }
 
     private fun loadCategorySections(part: BookSourcePart, kinds: List<ExploreKind>) {
+        sectionJobs.forEach { it.cancel() }
+        sectionJobs.clear()
         categorySectionsContainer.removeAllViews()
         if (kinds.isEmpty()) return
         kinds.forEach { kind ->
@@ -413,12 +452,13 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
             }
             scroll.addView(cards)
             categorySectionsContainer.addView(scroll)
-            lifecycleScope.launch {
+            sectionJobs += lifecycleScope.launch {
                 val books = withContext(IO) {
                     runCatching {
                         val source = part.getBookSource() ?: return@runCatching emptyList<SearchBook>()
                         WebBook.exploreBookAwait(source, kind.url.orEmpty(), 1).take(10)
-                    }.getOrElse { emptyList() }
+                    }.onFailure { AppLog.put("影视分类列表加载失败(url=${kind.url})", it) }
+                        .getOrElse { emptyList() }
                 }
                 if (!isAdded || view == null || currentSource?.bookSourceUrl != part.bookSourceUrl) return@launch
                 books.forEach { book ->
@@ -444,7 +484,7 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
                     }
                     card.addView(cover, LinearLayout.LayoutParams(104.dpToPx(), 150.dpToPx()))
                     card.addView(TextView(requireContext()).apply {
-                        text = book.name.ifBlank { "未命名" }
+                        text = book.name.ifBlank { getString(R.string.video_unnamed) }
                         textSize = 13f
                         setTextColor(primaryTextColor)
                         maxLines = 2
@@ -461,7 +501,7 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
         featuredContainer.removeAllViews()
         heroContainer.removeAllViews()
         if (books.isEmpty()) {
-            sourceHint.text = "当前分类暂时没有解析到影视内容"
+            sourceHint.text = getString(R.string.video_category_empty_hint)
             sourceHint.visibility = View.VISIBLE
             return
         }
@@ -495,14 +535,14 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
             orientation = LinearLayout.VERTICAL
             setPadding(16.dpToPx(), 12.dpToPx(), 16.dpToPx(), 12.dpToPx())
             addView(TextView(context).apply {
-                text = heroBook.name.ifBlank { "未命名" }
+                text = heroBook.name.ifBlank { getString(R.string.video_unnamed) }
                 textSize = 23f
                 setTextColor(primaryTextColor)
                 maxLines = 2
                 ellipsize = android.text.TextUtils.TruncateAt.END
             })
             addView(TextView(context).apply {
-                text = heroBook.author.ifBlank { "影视内容" }
+                text = heroBook.author.ifBlank { getString(R.string.video_content_default) }
                 textSize = 14f
                 setTextColor(primaryTextColor)
                 alpha = .68f
@@ -510,7 +550,7 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
                 setPadding(0, 8.dpToPx(), 0, 8.dpToPx())
             })
             addView(TextView(context).apply {
-                text = "来自当前影视书源 · 点击查看详情"
+                text = getString(R.string.video_from_source_hint)
                 textSize = 13f
                 setTextColor(primaryTextColor)
                 alpha = .55f
@@ -544,7 +584,7 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
             }
             card.addView(cover, LinearLayout.LayoutParams(116.dpToPx(), 166.dpToPx()))
             card.addView(TextView(requireContext()).apply {
-                text = book.name.ifBlank { "未命名" }
+                text = book.name.ifBlank { getString(R.string.video_unnamed) }
                 textSize = 14f
                 setTextColor(primaryTextColor)
                 maxLines = 2
@@ -557,19 +597,19 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
 
     private fun showSearchDialog() {
         val source = currentSource ?: run {
-            toastOnUi("暂无可用的影视书源")
+            toastOnUi(R.string.video_no_source_available)
             return
         }
         val input = EditText(requireContext()).apply {
-            hint = "搜索影视名称"
+            hint = getString(R.string.video_search_input_hint)
             setSingleLine(true)
             setPadding(20.dpToPx(), 8.dpToPx(), 20.dpToPx(), 8.dpToPx())
         }
         AlertDialog.Builder(requireContext())
-            .setTitle("影视搜索 · ${source.bookSourceName}")
+            .setTitle(getString(R.string.video_search_title, source.bookSourceName))
             .setView(input)
-            .setNegativeButton("取消", null)
-            .setPositiveButton("搜索") { _, _ ->
+            .setNegativeButton(R.string.video_cancel, null)
+            .setPositiveButton(R.string.video_search) { _, _ ->
                 val key = input.text.toString().trim()
                 if (key.isBlank()) return@setPositiveButton
                 lifecycleScope.launch {
@@ -580,7 +620,8 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
                                 key,
                                 1
                             ).take(20)
-                        }.getOrElse { emptyList() }
+                        }.onFailure { AppLog.put("影视搜索失败(key=$key)", it) }
+                            .getOrElse { emptyList() }
                     }
                     if (!isAdded || view == null) return@launch
                     showSearchResults(books)
@@ -590,12 +631,12 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
 
     private fun showSearchResults(books: List<SearchBook>) {
         if (books.isEmpty()) {
-            Toast.makeText(requireContext(), "没有搜索到结果", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), R.string.video_search_empty, Toast.LENGTH_SHORT).show()
             return
         }
-        val names = books.map { it.name.ifBlank { "未命名" } }.toTypedArray()
+        val names = books.map { it.name.ifBlank { getString(R.string.video_unnamed) } }.toTypedArray()
         AlertDialog.Builder(requireContext())
-            .setTitle("搜索结果")
+            .setTitle(R.string.video_search_result_title)
             .setItems(names) { _, which ->
                 val book = books[which]
                 startActivity<io.legado.app.ui.video.VideoDetailActivity> {
@@ -605,7 +646,7 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
                     putExtra("origin", book.origin)
                 }
             }
-            .setNegativeButton("关闭", null)
+            .setNegativeButton(R.string.video_close, null)
             .show()
     }
 
