@@ -490,9 +490,10 @@ java.HMacBase64(data: String, algorithm: String, key: String): String
 >
 > `algorithm` 为 HMAC 算法，支持 `HmacSHA256`、`SHA-256`、`SHA256` 等写法；`iterations` 为迭代次数(>=1)；`keyLength` 为派生密钥长度(字节, >=1)。
 >
-> 兼容全部 minSdk 版本，不依赖 API 26 才提供的 `SecretKeyFactory "PBKDF2WithHmacSHA256"`。
+> 兼容全部 minSdk 版本，不依赖 API 26 才提供的 `SecretKeyFactory "PBKDF2WithHmacSHA256"`；全程不依赖 `java.lang.reflect`，不受 RhinoClassShutter 屏蔽影响。
 
 ```js
+// password/salt 按 UTF-8 编码为字节, 仅适用于文本口令
 // 返回16进制字符串
 java.pbkdf2Hex(password: String, salt: String, algorithm: String, iterations: Int, keyLength: Int): String
 
@@ -501,6 +502,20 @@ java.pbkdf2Base64(password: String, salt: String, algorithm: String, iterations:
 
 // 示例: PBKDF2-HMAC-SHA256, 65536轮, 输出32字节密钥
 java.pbkdf2Hex("password", "salt", "HmacSHA256", 65536, 32)
+```
+
+> **二进制安全版本**：password/salt 以16进制字符串传入(每字节2位)，原生解码为字节后再派生。
+> 适用于任意二进制口令(如 `nonce(16字节)‖counter(4字节)`)，避免 UTF-8 编码破坏数据。
+
+```js
+// 返回16进制字符串
+java.pbkdf2HexByHex(passwordHex: String, saltHex: String, algorithm: String, iterations: Int, keyLength: Int): String
+
+// 返回Base64字符串
+java.pbkdf2Base64ByHex(passwordHex: String, saltHex: String, algorithm: String, iterations: Int, keyLength: Int): String
+
+// 示例: 二进制口令 00112233445566778899aabbccddeeff + counter 0000000f
+java.pbkdf2HexByHex("00112233445566778899aabbccddeeff0000000f", "deadbeef", "HmacSHA256", 1000, 32)
 ```
 
 ## book对象的可用属性

@@ -524,6 +524,8 @@ interface JsEncodeUtils {
      * PBKDF2 密钥派生，并转为16进制字符串
      *
      * 使用指定HMAC摘要算法对 password 与 salt 进行 PBKDF2 迭代派生。
+     * 注意 password/salt 按 UTF-8 编码为字节，若为任意二进制(如 nonce‖counter)请改用
+     * [pbkdf2HexByHex]，否则会被 UTF-8 编码破坏。
      * 底层基于 javax.crypto.Mac 原生实现，兼容全部 minSdk 版本，
      * 不依赖 API 26 才提供的 SecretKeyFactory "PBKDF2WithHmacSHA256"。
      *
@@ -543,12 +545,17 @@ interface JsEncodeUtils {
         keyLength: Int
     ): String {
         return HexUtil.encodeHexStr(
-            pbkdf2Derive(password, salt, algorithm, iterations, keyLength)
+            pbkdf2Derive(
+                password.encodeToByteArray(), salt.encodeToByteArray(),
+                algorithm, iterations, keyLength
+            )
         )
     }
 
     /**
      * PBKDF2 密钥派生，并转为Base64字符串
+     *
+     * 注意 password/salt 按 UTF-8 编码为字节，若为任意二进制请改用 [pbkdf2Base64ByHex]。
      *
      * @param password 口令(UTF-8)
      * @param salt 盐值(UTF-8)
@@ -566,7 +573,69 @@ interface JsEncodeUtils {
         keyLength: Int
     ): String {
         return Base64.encodeToString(
-            pbkdf2Derive(password, salt, algorithm, iterations, keyLength),
+            pbkdf2Derive(
+                password.encodeToByteArray(), salt.encodeToByteArray(),
+                algorithm, iterations, keyLength
+            ),
+            Base64.NO_WRAP
+        )
+    }
+
+    /**
+     * PBKDF2 密钥派生(二进制安全)，并转为16进制字符串
+     *
+     * passwordHex/saltHex 以16进制字符串传入，原生解码为字节后再派生，避免 UTF-8 编码破坏
+     * 任意二进制口令(如 nonce(16字节)‖counter(4字节))。同时全程不依赖 java.lang.reflect，
+     * 不受 RhinoClassShutter 屏蔽影响。
+     *
+     * @param passwordHex 口令(16进制字符串, 每字节2位)
+     * @param saltHex 盐值(16进制字符串, 每字节2位)
+     * @param algorithm HMAC算法, 如 HmacSHA256 / SHA-256
+     * @param iterations 迭代次数, 需 >= 1
+     * @param keyLength 派生密钥长度(字节), 需 >= 1
+     * @return 16进制字符串
+     */
+    @JavascriptInterface
+    fun pbkdf2HexByHex(
+        passwordHex: String,
+        saltHex: String,
+        algorithm: String,
+        iterations: Int,
+        keyLength: Int
+    ): String {
+        return HexUtil.encodeHexStr(
+            pbkdf2Derive(
+                decodeHexBytes(passwordHex, "password"),
+                decodeHexBytes(saltHex, "salt"),
+                algorithm, iterations, keyLength
+            )
+        )
+    }
+
+    /**
+     * PBKDF2 密钥派生(二进制安全)，并转为Base64字符串
+     *
+     * @param passwordHex 口令(16进制字符串, 每字节2位)
+     * @param saltHex 盐值(16进制字符串, 每字节2位)
+     * @param algorithm HMAC算法, 如 HmacSHA256 / SHA-256
+     * @param iterations 迭代次数, 需 >= 1
+     * @param keyLength 派生密钥长度(字节), 需 >= 1
+     * @return Base64字符串
+     */
+    @JavascriptInterface
+    fun pbkdf2Base64ByHex(
+        passwordHex: String,
+        saltHex: String,
+        algorithm: String,
+        iterations: Int,
+        keyLength: Int
+    ): String {
+        return Base64.encodeToString(
+            pbkdf2Derive(
+                decodeHexBytes(passwordHex, "password"),
+                decodeHexBytes(saltHex, "salt"),
+                algorithm, iterations, keyLength
+            ),
             Base64.NO_WRAP
         )
     }
@@ -580,8 +649,8 @@ interface JsEncodeUtils {
      * 直接基于 javax.crypto.Mac 实现，避免记录口令、盐值等敏感信息。
      */
     private fun pbkdf2Derive(
-        password: String,
-        salt: String,
+        password: ByteArray,
+        salt: ByteArray,
         algorithm: String,
         iterations: Int,
         keyLength: Int
@@ -591,22 +660,21 @@ interface JsEncodeUtils {
             require(iterations >= 1) { "PBKDF2迭代次数必须 >= 1, 当前为 $iterations" }
             require(keyLength >= 1) { "PBKDF2派生密钥长度必须 >= 1, 当前为 $keyLength" }
             val mac = Mac.getInstance(hmacAlgorithm)
-            mac.init(SecretKeySpec(password.encodeToByteArray(), hmacAlgorithm))
+            mac.init(SecretKeySpec(password, hmacAlgorithm))
             val hLen = mac.macLength
             val blockCount = (keyLength + hLen - 1) / hLen
             val derivedKey = ByteArray(keyLength)
-            val saltBytes = salt.encodeToByteArray()
-            val saltBlock = ByteArray(saltBytes.size + 4)
-            System.arraycopy(saltBytes, 0, saltBlock, 0, saltBytes.size)
+            val saltBlock = ByteArray(salt.size + 4)
+            System.arraycopy(salt, 0, saltBlock, 0, salt.size)
             val u = ByteArray(hLen)
             val t = ByteArray(hLen)
             var offset = 0
             for (blockIndex in 1..blockCount) {
                 // 大端序写入32位块序号 INT_32_BE(i)
-                saltBlock[saltBytes.size] = (blockIndex ushr 24).toByte()
-                saltBlock[saltBytes.size + 1] = (blockIndex ushr 16).toByte()
-                saltBlock[saltBytes.size + 2] = (blockIndex ushr 8).toByte()
-                saltBlock[saltBytes.size + 3] = blockIndex.toByte()
+                saltBlock[salt.size] = (blockIndex ushr 24).toByte()
+                saltBlock[salt.size + 1] = (blockIndex ushr 16).toByte()
+                saltBlock[salt.size + 2] = (blockIndex ushr 8).toByte()
+                saltBlock[salt.size + 3] = blockIndex.toByte()
                 // U1 = PRF(P, S || INT_32_BE(i))
                 mac.update(saltBlock)
                 mac.doFinal(u, 0)
@@ -632,6 +700,18 @@ interface JsEncodeUtils {
                 "PBKDF2密钥派生失败 algorithm=$hmacAlgorithm iterations=$iterations keyLength=$keyLength",
                 e
             )
+            throw e
+        }
+    }
+
+    /**
+     * 解码16进制字符串为字节, 失败时记录错误日志(不记录密文本身)
+     */
+    private fun decodeHexBytes(hex: String, fieldName: String): ByteArray {
+        return try {
+            HexUtil.decodeHex(hex)
+        } catch (e: Exception) {
+            AppLog.put("PBKDF2 $fieldName 十六进制解码失败", e)
             throw e
         }
     }
