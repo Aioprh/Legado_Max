@@ -112,6 +112,8 @@ class FastScroller : LinearLayout {
         val marginTop = resources.getDimensionPixelSize(R.dimen.fastscroll_scrollbar_margin_top)
         val marginBottom =
             resources.getDimensionPixelSize(R.dimen.fastscroll_scrollbar_margin_bottom)
+        val marginHorizontal =
+            resources.getDimensionPixelSize(R.dimen.fastscroll_scrollbar_margin_horizontal)
         alignToLeft = shouldAlignToLeft()
         require(recyclerViewId != View.NO_ID) { "RecyclerView must have a view ID" }
         when (viewGroup) {
@@ -148,20 +150,20 @@ class FastScroller : LinearLayout {
                 }
                 constraintSet.applyTo(viewGroup)
                 val layoutParams = layoutParams as ConstraintLayout.LayoutParams
-                layoutParams.setMargins(0, marginTop, 0, marginBottom)
+                layoutParams.setMargins(marginHorizontal, marginTop, marginHorizontal, marginBottom)
                 setLayoutParams(layoutParams)
             }
             is CoordinatorLayout -> {
                 val layoutParams = layoutParams as CoordinatorLayout.LayoutParams
                 layoutParams.anchorId = recyclerViewId
                 layoutParams.anchorGravity = if (alignToLeft) Gravity.LEFT else Gravity.RIGHT
-                layoutParams.setMargins(0, marginTop, 0, marginBottom)
+                layoutParams.setMargins(marginHorizontal, marginTop, marginHorizontal, marginBottom)
                 setLayoutParams(layoutParams)
             }
             is FrameLayout -> {
                 val layoutParams = layoutParams as FrameLayout.LayoutParams
                 layoutParams.gravity = (if (alignToLeft) Gravity.LEFT else Gravity.RIGHT) or Gravity.TOP
-                layoutParams.setMargins(0, marginTop, 0, marginBottom)
+                layoutParams.setMargins(marginHorizontal, marginTop, marginHorizontal, marginBottom)
                 setLayoutParams(layoutParams)
             }
             is RelativeLayout -> {
@@ -172,7 +174,7 @@ class FastScroller : LinearLayout {
                     if (alignToLeft) RelativeLayout.ALIGN_LEFT else RelativeLayout.ALIGN_RIGHT,
                     recyclerViewId
                 )
-                layoutParams.setMargins(0, marginTop, 0, marginBottom)
+                layoutParams.setMargins(marginHorizontal, marginTop, marginHorizontal, marginBottom)
                 setLayoutParams(layoutParams)
             }
             else -> throw IllegalArgumentException("Parent ViewGroup must be a ConstraintLayout, CoordinatorLayout, FrameLayout, or RelativeLayout")
