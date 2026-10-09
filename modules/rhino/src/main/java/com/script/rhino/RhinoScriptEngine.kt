@@ -71,6 +71,26 @@ import kotlin.coroutines.CoroutineContext
 object RhinoScriptEngine : AbstractScriptEngine(), Invocable, Compilable {
     var accessContext: AccessControlContext? = null
     private var topLevel: RhinoTopLevel? = null
+
+    /**
+     * 是否启用 Rhino 的线程安全对象（ThreadSafeSlotMapContainer）。
+     *
+     * 书源 jsLib 的共享作用域（SharedJsScope）会被多个协程线程并发执行，而 Rhino 的
+     * EmbeddedSlotMap 并非线程安全，并发 put/delete 会破坏其内部顺序链表，抛出：
+     * NullPointerException: EmbeddedSlotMap.removeSlot(... Slot.orderedNext ...)
+     * 开启该特性后 Rhino 改用基于 StampedLock 的容器，保证并发下 SlotMap 的一致性。
+     *
+     * 注意：StampedLock 需要 Android API 24+（Java 8+），低版本回退到原有行为。
+     */
+    private val threadSafeObjectsSupported: Boolean by lazy {
+        try {
+            Class.forName("java.util.concurrent.locks.StampedLock")
+            true
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
     private val indexedProps: MutableMap<Any, Any?>
     private val implementor: InterfaceImplementor
 
@@ -333,6 +353,7 @@ object RhinoScriptEngine : AbstractScriptEngine(), Invocable, Compilable {
                 @Suppress("UNUSED_EXPRESSION")
                 return when (featureIndex) {
                     Context.FEATURE_ENABLE_JAVA_MAP_ACCESS -> true
+                    Context.FEATURE_THREAD_SAFE_OBJECTS -> threadSafeObjectsSupported
                     else -> super.hasFeature(cx, featureIndex)
                 }
             }
