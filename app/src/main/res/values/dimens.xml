@@ -33,6 +33,7 @@
     <dimen name="fastscroll_track_width">1dp</dimen>
 
     <dimen name="fastscroll_scrollbar_margin_top">8dp</dimen>
+    <dimen name="fastscroll_scrollbar_margin_horizontal">4dp</dimen>
     <dimen name="fastscroll_scrollbar_margin_bottom">8dp</dimen>
     <dimen name="fastscroll_scrollbar_padding_start">0dp</dimen>
     <dimen name="fastscroll_scrollbar_padding_end">0dp</dimen>
