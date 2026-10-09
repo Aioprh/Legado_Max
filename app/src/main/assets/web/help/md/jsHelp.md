@@ -484,6 +484,25 @@ java.HMacHex(data: String, algorithm: String, key: String): String
 java.HMacBase64(data: String, algorithm: String, key: String): String
 ```
 
+- PBKDF2
+
+> PBKDF2 密钥派生(RFC 8018)，原生实现，性能远高于在 JS 中展开多轮 HMAC。
+>
+> `algorithm` 为 HMAC 算法，支持 `HmacSHA256`、`SHA-256`、`SHA256` 等写法；`iterations` 为迭代次数(>=1)；`keyLength` 为派生密钥长度(字节, >=1)。
+>
+> 兼容全部 minSdk 版本，不依赖 API 26 才提供的 `SecretKeyFactory "PBKDF2WithHmacSHA256"`。
+
+```js
+// 返回16进制字符串
+java.pbkdf2Hex(password: String, salt: String, algorithm: String, iterations: Int, keyLength: Int): String
+
+// 返回Base64字符串
+java.pbkdf2Base64(password: String, salt: String, algorithm: String, iterations: Int, keyLength: Int): String
+
+// 示例: PBKDF2-HMAC-SHA256, 65536轮, 输出32字节密钥
+java.pbkdf2Hex("password", "salt", "HmacSHA256", 65536, 32)
+```
+
 ## book对象的可用属性
 
 ### 属性

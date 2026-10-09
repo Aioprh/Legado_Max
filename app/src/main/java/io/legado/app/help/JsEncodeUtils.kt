@@ -2,13 +2,17 @@ package io.legado.app.help
 
 import android.util.Base64
 import android.webkit.JavascriptInterface
+import cn.hutool.core.util.HexUtil
 import cn.hutool.crypto.digest.DigestUtil
 import cn.hutool.crypto.digest.HMac
 import cn.hutool.crypto.symmetric.SymmetricCrypto
+import io.legado.app.constant.AppLog
 import io.legado.app.help.crypto.AsymmetricCrypto
 import io.legado.app.help.crypto.Sign
 import io.legado.app.help.crypto.SymmetricCryptoAndroid
 import io.legado.app.utils.MD5Utils
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 
 
 /**
@@ -514,5 +518,134 @@ interface JsEncodeUtils {
         )
     }
 
+//******************PBKDF2密钥派生************************//
+
+    /**
+     * PBKDF2 密钥派生，并转为16进制字符串
+     *
+     * 使用指定HMAC摘要算法对 password 与 salt 进行 PBKDF2 迭代派生。
+     * 底层基于 javax.crypto.Mac 原生实现，兼容全部 minSdk 版本，
+     * 不依赖 API 26 才提供的 SecretKeyFactory "PBKDF2WithHmacSHA256"。
+     *
+     * @param password 口令(UTF-8)
+     * @param salt 盐值(UTF-8)
+     * @param algorithm HMAC算法, 如 HmacSHA256 / SHA-256
+     * @param iterations 迭代次数, 需 >= 1
+     * @param keyLength 派生密钥长度(字节), 需 >= 1
+     * @return 16进制字符串
+     */
+    @JavascriptInterface
+    fun pbkdf2Hex(
+        password: String,
+        salt: String,
+        algorithm: String,
+        iterations: Int,
+        keyLength: Int
+    ): String {
+        return HexUtil.encodeHexStr(
+            pbkdf2Derive(password, salt, algorithm, iterations, keyLength)
+        )
+    }
+
+    /**
+     * PBKDF2 密钥派生，并转为Base64字符串
+     *
+     * @param password 口令(UTF-8)
+     * @param salt 盐值(UTF-8)
+     * @param algorithm HMAC算法, 如 HmacSHA256 / SHA-256
+     * @param iterations 迭代次数, 需 >= 1
+     * @param keyLength 派生密钥长度(字节), 需 >= 1
+     * @return Base64字符串
+     */
+    @JavascriptInterface
+    fun pbkdf2Base64(
+        password: String,
+        salt: String,
+        algorithm: String,
+        iterations: Int,
+        keyLength: Int
+    ): String {
+        return Base64.encodeToString(
+            pbkdf2Derive(password, salt, algorithm, iterations, keyLength),
+            Base64.NO_WRAP
+        )
+    }
+
+    /**
+     * PBKDF2 密钥派生核心实现(RFC 8018)
+     *
+     * DK = T1 || T2 || ... || Tl, 其中 Ti = F(P, S, c, i),
+     * F(P, S, c, i) = U1 xor U2 xor ... xor Uc,
+     * U1 = PRF(P, S || INT_32_BE(i)), Uj = PRF(P, U(j-1))。
+     * 直接基于 javax.crypto.Mac 实现，避免记录口令、盐值等敏感信息。
+     */
+    private fun pbkdf2Derive(
+        password: String,
+        salt: String,
+        algorithm: String,
+        iterations: Int,
+        keyLength: Int
+    ): ByteArray {
+        val hmacAlgorithm = normalizeHmacAlgorithm(algorithm)
+        try {
+            require(iterations >= 1) { "PBKDF2迭代次数必须 >= 1, 当前为 $iterations" }
+            require(keyLength >= 1) { "PBKDF2派生密钥长度必须 >= 1, 当前为 $keyLength" }
+            val mac = Mac.getInstance(hmacAlgorithm)
+            mac.init(SecretKeySpec(password.encodeToByteArray(), hmacAlgorithm))
+            val hLen = mac.macLength
+            val blockCount = (keyLength + hLen - 1) / hLen
+            val derivedKey = ByteArray(keyLength)
+            val saltBytes = salt.encodeToByteArray()
+            val saltBlock = ByteArray(saltBytes.size + 4)
+            System.arraycopy(saltBytes, 0, saltBlock, 0, saltBytes.size)
+            val u = ByteArray(hLen)
+            val t = ByteArray(hLen)
+            var offset = 0
+            for (blockIndex in 1..blockCount) {
+                // 大端序写入32位块序号 INT_32_BE(i)
+                saltBlock[saltBytes.size] = (blockIndex ushr 24).toByte()
+                saltBlock[saltBytes.size + 1] = (blockIndex ushr 16).toByte()
+                saltBlock[saltBytes.size + 2] = (blockIndex ushr 8).toByte()
+                saltBlock[saltBytes.size + 3] = blockIndex.toByte()
+                // U1 = PRF(P, S || INT_32_BE(i))
+                mac.update(saltBlock)
+                mac.doFinal(u, 0)
+                System.arraycopy(u, 0, t, 0, hLen)
+                // Uj = PRF(P, U(j-1)); Ti = U1 xor U2 xor ... xor Uc
+                for (round in 2..iterations) {
+                    mac.update(u)
+                    mac.doFinal(u, 0)
+                    for (index in 0 until hLen) {
+                        t[index] = (t[index].toInt() xor u[index].toInt()).toByte()
+                    }
+                }
+                val copyLength = minOf(hLen, keyLength - offset)
+                System.arraycopy(t, 0, derivedKey, offset, copyLength)
+                offset += copyLength
+            }
+            AppLog.putDebug(
+                "PBKDF2密钥派生完成 algorithm=$hmacAlgorithm iterations=$iterations keyLength=$keyLength"
+            )
+            return derivedKey
+        } catch (e: Exception) {
+            AppLog.put(
+                "PBKDF2密钥派生失败 algorithm=$hmacAlgorithm iterations=$iterations keyLength=$keyLength",
+                e
+            )
+            throw e
+        }
+    }
+
+    /**
+     * 归一化 HMAC 算法名, 兼容 HmacSHA256 / SHA-256 / SHA256 等写法
+     */
+    private fun normalizeHmacAlgorithm(algorithm: String): String {
+        val name = algorithm.trim()
+        return if (name.startsWith("Hmac", ignoreCase = true)) {
+            name
+        } else {
+            "Hmac" + name.replace("-", "").uppercase()
+        }
+    }
 
 }
