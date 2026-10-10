@@ -444,6 +444,49 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         get() = appCtx.getPrefInt(PreferKey.modernDiscoveryLayout, 2).coerceIn(0, 2)
         set(value) = appCtx.putPrefInt(PreferKey.modernDiscoveryLayout, value.coerceIn(0, 2))
 
+    data class VideoHistoryItem(
+        val name: String = "",
+        val author: String = "",
+        val bookUrl: String = "",
+        val origin: String = "",
+        val coverUrl: String? = null,
+        val episodeIndex: Int = 0,
+        val episodeTitle: String = "",
+        val time: Long = 0L
+    )
+
+    /** 影视最近播放记录，独立于普通书架，不会因为观看影视而自动加入书架。 */
+    var videoHistory: List<VideoHistoryItem>
+        get() = GSON.fromJsonObject<List<VideoHistoryItem>>(appCtx.getPrefString("videoHistory"))
+            .getOrDefault(emptyList())
+        set(value) {
+            if (value.isEmpty()) appCtx.removePref("videoHistory")
+            else appCtx.putPrefString("videoHistory", GSON.toJson(value.take(20)))
+        }
+
+    fun saveVideoHistory(
+        name: String,
+        author: String,
+        bookUrl: String,
+        origin: String,
+        coverUrl: String?,
+        episodeIndex: Int,
+        episodeTitle: String
+    ) {
+        val item = VideoHistoryItem(name, author, bookUrl, origin, coverUrl, episodeIndex, episodeTitle, System.currentTimeMillis())
+        videoHistory = listOf(item) + videoHistory.filterNot {
+            it.bookUrl == bookUrl && it.origin == origin
+        }
+    }
+
+    /** 当前影视页选择的影视书源 URL；影视分类完全由该书源提供。 */
+    var videoSourceUrl: String?
+        get() = appCtx.getPrefString("videoSourceUrl")
+        set(value) {
+            if (value.isNullOrBlank()) appCtx.removePref("videoSourceUrl")
+            else appCtx.putPrefString("videoSourceUrl", value)
+        }
+
     var bookExportFileName: String?
         get() = appCtx.getPrefString(PreferKey.bookExportFileName)
         set(value) {
@@ -893,9 +936,14 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             val stored = appCtx.getPrefString(PreferKey.navItemOrder)
             if (!stored.isNullOrBlank()) {
                 val parsed = stored.split(",").filter { it.isNotBlank() }
-                if (parsed.isNotEmpty()) return parsed
+                if (parsed.isNotEmpty()) {
+                    if (parsed.contains("video")) return parsed
+                    // 旧数据可能不含 video，补到“我的”之前，与默认顺序及排序弹窗位置保持一致
+                    val insertAt = parsed.indexOf("my").let { if (it >= 0) it else parsed.size }
+                    return parsed.toMutableList().apply { add(insertAt, "video") }
+                }
             }
-            return listOf("bookshelf", "homepage", "explore", "rss", "my")
+            return listOf("bookshelf", "homepage", "explore", "rss", "video", "my")
         }
 
     fun setNavItemOrder(order: List<String>) {

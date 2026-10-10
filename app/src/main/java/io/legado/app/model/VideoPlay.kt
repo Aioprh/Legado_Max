@@ -655,6 +655,30 @@ object VideoPlay : CoroutineScope by MainScope(){
         episodes = toc.subList(startInt + 1, endInt)
     }
 
+    /**
+     * 按目录（toc）全局下标定位剧集，供详情页/历史记录跳转使用。
+     * 兼容存在“卷”的书源：先把全局下标换算到所属卷，再取卷内子下标，
+     * 避免把 toc 下标直接当作卷内下标导致跳错集。
+     */
+    fun setEpisodeByTocIndex(tocIndex: Int) {
+        val tocList = toc ?: return
+        if (tocList.isEmpty()) return
+        val safeIndex = tocIndex.coerceIn(0, tocList.lastIndex)
+        if (volumes.isEmpty()) {
+            durVolumeIndex = 0
+            durVolume = null
+            episodes = tocList
+            chapterInVolumeIndex = safeIndex
+            return
+        }
+        val volumeIndex = volumes.indexOfLast { it.index < safeIndex }.let { if (it < 0) 0 else it }
+        durVolumeIndex = volumeIndex
+        upEpisodes()
+        val startInt = volumes.getOrNull(volumeIndex)?.index ?: 0
+        chapterInVolumeIndex = (safeIndex - startInt - 1)
+            .coerceIn(0, (episodes?.lastIndex ?: 0).coerceAtLeast(0))
+    }
+
     fun upDurIndex(offset: Int, player: StandardGSYVideoPlayer): Boolean {
         val episodes = episodes ?: return false
         val index = chapterInVolumeIndex + offset

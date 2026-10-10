@@ -853,7 +853,14 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
     }
 
     override fun showBookInfo(book: SearchBook) {
-        startActivity<BookInfoActivity> {
+        if (intent.getBooleanExtra("videoMode", false)) {
+            startActivity<io.legado.app.ui.video.VideoDetailActivity> {
+                putExtra("name", book.name)
+                putExtra("author", book.author)
+                putExtra("bookUrl", book.bookUrl)
+                putExtra("origin", book.origin)
+            }
+        } else startActivity<BookInfoActivity> {
             putExtra("name", book.name)
             putExtra("author", book.author)
             putExtra("bookUrl", book.bookUrl)

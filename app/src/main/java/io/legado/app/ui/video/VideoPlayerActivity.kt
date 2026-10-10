@@ -258,6 +258,12 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
             finish()
             return
         }
+        // 详情页/历史记录会带上要播放的剧集在目录中的全局下标；
+        // 通过 setEpisodeByTocIndex 换算（含“卷”结构），而不是直接赋给 chapterInVolumeIndex
+        val requestedEpisode = intent.getIntExtra("episodeIndex", -1)
+        if (requestedEpisode >= 0) {
+            VideoPlay.setEpisodeByTocIndex(requestedEpisode)
+        }
         VideoPlay.startPlay(playerView)
         VideoPlay.saveRead()
     }
