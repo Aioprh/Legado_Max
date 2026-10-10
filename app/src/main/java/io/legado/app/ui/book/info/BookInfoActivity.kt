@@ -1131,15 +1131,14 @@ class BookInfoActivity :
         fun sourceName(url: String?): String {
             if (io.legado.app.model.webBook.QidianParagraphComment.isBinding(url)) {
                 val id = io.legado.app.model.webBook.QidianParagraphComment.bookId(url)
-                return if (id != null) "起点直连（$id）" else "起点直连（按书名/作者自动匹配）"
+                return if (id != null) "起点直连（$id）" else "起点直连（未绑定）"
             }
             return url?.takeIf { it.isNotBlank() }
                 ?.let { appDb.bookSourceDao.getBookSourcePart(it)?.bookSourceName }
                 ?: getString(R.string.book_paragraph_comment_source_none)
         }
-        // 默认起点直连：未显式配置段评书源时，默认按书名/作者自动匹配起点作品。
+        // 默认不启用：起点直连需手动绑定作品 ID，未绑定时不注入段评。
         val defaultSource = config.paragraphCommentSource?.takeIf { it.isNotBlank() }
-            ?: io.legado.app.model.webBook.QidianParagraphComment.BINDING_PREFIX
         val sourceRow = TextView(this).apply {
             text = getString(R.string.book_paragraph_comment_source) + "：" + sourceName(defaultSource)
             textSize = 16f
@@ -1154,11 +1153,8 @@ class BookInfoActivity :
             val parts = appDb.bookSourceDao.allEnabledPart.sortedBy { it.customOrder }
             val names = ArrayList<CharSequence>()
             val urls = ArrayList<String>()
-            // 起点直连（自动匹配）：本地书 / 联网书均可使用，无需书源
-            names.add("起点直连（按书名/作者自动匹配，推荐）")
-            urls.add(io.legado.app.model.webBook.QidianParagraphComment.BINDING_PREFIX)
-            // 起点直连（手动绑定）：搜索或粘贴起点作品链接
-            names.add("起点直连（手动搜索/粘贴链接绑定）")
+            // 起点直连：本地书 / 联网书均可使用，需搜索或粘贴起点作品链接绑定
+            names.add("起点直连（搜索/粘贴链接绑定，推荐）")
             urls.add(QIDIAN_MANUAL_MARKER)
             names.add(getString(R.string.book_paragraph_comment_source_none))
             urls.add("")
@@ -1205,7 +1201,7 @@ class BookInfoActivity :
             hint = "输入书名或粘贴起点作品链接"
             setSingleLine(true)
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
-            // 预填本书书名，便于直接搜索；作者用于结果排序时优先精确匹配
+            // 预填本书书名，便于直接搜索
             setText(book.name)
             setSelection(text.length)
         }
@@ -1260,20 +1256,11 @@ class BookInfoActivity :
                         toastOnUi("没有找到起点作品，可直接粘贴起点 H5 分享链接重试")
                         return@launch
                     }
-                    // 输入为本书书名时，先按书名 + 作者自动确认，避免手动挑选
-                    val best = if (keyword == book.name) {
-                        io.legado.app.model.webBook.QidianParagraphComment
-                            .pickBestMatch(results, book.name, book.author)
-                    } else null
-                    if (best != null && bind(best.bookId)) {
-                        return@launch
-                    }
-                    val ordered = if (best != null) listOf(best) + results.filter { it != best } else results
-                    val labels = ordered.map {
+                    val labels = results.map {
                         if (it.author.isBlank()) it.name else it.name + "  ·  " + it.author
                     }
                     selector("选择起点作品", labels) { _, selected ->
-                        ordered.getOrNull(selected)?.let { item -> bind(item.bookId) }
+                        results.getOrNull(selected)?.let { item -> bind(item.bookId) }
                     }
                 }
             }
