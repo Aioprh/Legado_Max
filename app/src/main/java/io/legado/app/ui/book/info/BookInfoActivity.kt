@@ -1148,7 +1148,8 @@ class BookInfoActivity :
             isClickable = true
         }
         layout.addView(sourceRow)
-        val sourceHolder = arrayOf(defaultSource)
+        // 显式声明为可空元素数组：选择“无/清空”时需要写入 null，同时匹配 showQidianBindingDialog 的参数类型
+        val sourceHolder: Array<String?> = arrayOf(defaultSource)
         sourceRow.setOnClickListener {
             val parts = appDb.bookSourceDao.allEnabledPart.sortedBy { it.customOrder }
             val names = ArrayList<CharSequence>()
