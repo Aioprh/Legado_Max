@@ -17,14 +17,9 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.CheckBox
-import android.widget.EditText
 import android.widget.LinearLayout
-import android.widget.TextView
-import android.text.InputType
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.widget.SwitchCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
@@ -142,9 +137,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import io.legado.app.ui.theme.LegadoTheme
 import io.legado.app.ui.widget.components.BookBottomSheet
-
-/** 段评书源选择器里“起点直连（手动绑定）”的临时标记，仅用于分流到手动绑定弹窗，不会持久化。 */
-private const val QIDIAN_MANUAL_MARKER = "qidian://@manual"
 
 class BookInfoActivity :
     VMBaseActivity<ActivityBookInfoBinding, BookInfoViewModel>(toolBarTheme = Theme.Dark, showOpenMenuIcon = false),
@@ -339,8 +331,6 @@ class BookInfoActivity :
             viewModel.bookSource != null
         menu.findItem(R.id.menu_split_long_chapter)?.isVisible =
             viewModel.bookData.value?.isLocalTxt ?: false
-        menu.findItem(R.id.menu_set_book_paragraph_comment)?.isVisible =
-            viewModel.bookData.value != null
         menu.findItem(R.id.menu_upload)?.isVisible =
             viewModel.bookData.value?.isLocal ?: false
         menu.findItem(R.id.menu_delete_alert)?.isChecked =
@@ -412,7 +402,6 @@ class BookInfoActivity :
             R.id.menu_top -> viewModel.topBook()
             R.id.menu_set_source_variable -> setSourceVariable()
             R.id.menu_set_book_variable -> setBookVariable()
-            R.id.menu_set_book_paragraph_comment -> setBookParagraphComment()
             R.id.menu_copy_book_url -> viewModel.getBook()?.let {
                 SourceCallBack.callBackBtn(
                     this,
@@ -1105,166 +1094,6 @@ class BookInfoActivity :
                 }
             }
         }
-    }
-
-    /**
-     * 单本书段评设置：为本书单独接入其他源的段评。
-     * 配置存于 book.config（ReadConfig JSON 列），优先于全局设置。
-     */
-    @SuppressLint("SetTextI18n")
-    private fun setBookParagraphComment() {
-        val book = viewModel.getBook() ?: return
-        val config = book.config
-        val padding = 24.dpToPx()
-        val layout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(padding, padding, padding, padding)
-        }
-        // 开关：为本书接入其他源的段评
-        val switch = SwitchCompat(this).apply {
-            text = getString(R.string.book_paragraph_comment_enable)
-            textSize = 16f
-            isChecked = config.paragraphComment
-        }
-        layout.addView(switch)
-        // 书源选择行
-        fun sourceName(url: String?): String {
-            if (io.legado.app.model.webBook.QidianParagraphComment.isBinding(url)) {
-                val id = io.legado.app.model.webBook.QidianParagraphComment.bookId(url)
-                return if (id != null) "起点直连（$id）" else "起点直连（未绑定）"
-            }
-            return url?.takeIf { it.isNotBlank() }
-                ?.let { appDb.bookSourceDao.getBookSourcePart(it)?.bookSourceName }
-                ?: getString(R.string.book_paragraph_comment_source_none)
-        }
-        // 默认不启用：起点直连需手动绑定作品 ID，未绑定时不注入段评。
-        val defaultSource = config.paragraphCommentSource?.takeIf { it.isNotBlank() }
-        val sourceRow = TextView(this).apply {
-            text = getString(R.string.book_paragraph_comment_source) + "：" + sourceName(defaultSource)
-            textSize = 16f
-            setTextColor(getPrimaryTextColor(ColorUtils.isColorLight(bottomBackground)))
-            setPadding(0, padding, 0, 0)
-            isClickable = true
-        }
-        layout.addView(sourceRow)
-        // 显式声明为可空元素数组：选择“无/清空”时需要写入 null，同时匹配 showQidianBindingDialog 的参数类型
-        val sourceHolder: Array<String?> = arrayOf(defaultSource)
-        sourceRow.setOnClickListener {
-            val parts = appDb.bookSourceDao.allEnabledPart.sortedBy { it.customOrder }
-            val names = ArrayList<CharSequence>()
-            val urls = ArrayList<String>()
-            // 起点直连：本地书 / 联网书均可使用，需搜索或粘贴起点作品链接绑定
-            names.add("起点直连（搜索/粘贴链接绑定，推荐）")
-            urls.add(QIDIAN_MANUAL_MARKER)
-            names.add(getString(R.string.book_paragraph_comment_source_none))
-            urls.add("")
-            parts.forEach {
-                names.add(it.bookSourceName)
-                urls.add(it.bookSourceUrl)
-            }
-            selector(getString(R.string.book_paragraph_comment_source), names) { _, index ->
-                when (urls.getOrNull(index)) {
-                    QIDIAN_MANUAL_MARKER -> showQidianBindingDialog(sourceHolder, sourceRow, ::sourceName, book)
-                    else -> {
-                        sourceHolder[0] = urls.getOrNull(index)?.ifBlank { null }
-                        sourceRow.text = getString(R.string.book_paragraph_comment_source) +
-                            "：" + sourceName(sourceHolder[0])
-                    }
-                }
-            }
-        }
-        AlertDialog.Builder(this).apply {
-            setTitle(R.string.set_book_paragraph_comment)
-            setView(layout)
-            setPositiveButton(R.string.ok) { _, _ ->
-                config.paragraphComment = switch.isChecked
-                config.paragraphCommentSource = sourceHolder[0]
-                viewModel.saveBook(book)
-            }
-            setNegativeButton(R.string.cancel, null)
-            show()
-        }
-    }
-
-    private fun showQidianBindingDialog(
-        sourceHolder: Array<String?>,
-        sourceRow: TextView,
-        sourceName: (String?) -> String,
-        book: Book
-    ) {
-        val padding = 20.dpToPx()
-        val layout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(padding, padding / 2, padding, 0)
-        }
-        val input = EditText(this).apply {
-            hint = "输入书名或粘贴起点作品链接"
-            setSingleLine(true)
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
-            // 预填本书书名，便于直接搜索
-            setText(book.name)
-            setSelection(text.length)
-        }
-        layout.addView(input)
-
-        fun bind(bookId: String): Boolean {
-            if (!bookId.matches(Regex("\\d{5,}"))) return false
-            sourceHolder[0] = io.legado.app.model.webBook.QidianParagraphComment.BINDING_PREFIX + bookId
-            sourceRow.text = getString(R.string.book_paragraph_comment_source) + "：" + sourceName(sourceHolder[0])
-            toastOnUi("已绑定起点作品：" + bookId)
-            return true
-        }
-
-        fun resolveAndBind(value: String) {
-            lifecycleScope.launch {
-                val id = io.legado.app.model.webBook.QidianParagraphComment.resolveBookId(value)
-                if (id != null && bind(id)) {
-                    return@launch
-                }
-                toastOnUi("没有识别到有效的起点作品链接")
-            }
-        }
-
-        AlertDialog.Builder(this)
-            .setTitle("绑定起点作品")
-            .setMessage("可以输入书名搜索，也可以直接粘贴起点作品链接。支持起点 H5 分享链接，会自动解析分享链接对应的 BookId。")
-            .setView(layout)
-            .setNeutralButton("粘贴链接") { _, _ ->
-                val text = input.text.toString().trim()
-                if (text.isBlank()) {
-                    toastOnUi("请输入起点作品链接")
-                } else {
-                    resolveAndBind(text)
-                }
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton("搜索") { _, _ ->
-                val keyword = input.text.toString().trim()
-                if (keyword.isBlank()) {
-                    toastOnUi("请输入书名或起点链接")
-                    return@setPositiveButton
-                }
-                lifecycleScope.launch {
-                    val directId = io.legado.app.model.webBook.QidianParagraphComment.resolveBookId(keyword)
-                    if (directId != null && bind(directId)) {
-                        return@launch
-                    }
-                    val results = withContext(IO) {
-                        io.legado.app.model.webBook.QidianParagraphComment.searchBooks(keyword)
-                    }
-                    if (results.isEmpty()) {
-                        toastOnUi("没有找到起点作品，可直接粘贴起点 H5 分享链接重试")
-                        return@launch
-                    }
-                    val labels = results.map {
-                        if (it.author.isBlank()) it.name else it.name + "  ·  " + it.author
-                    }
-                    selector("选择起点作品", labels) { _, selected ->
-                        results.getOrNull(selected)?.let { item -> bind(item.bookId) }
-                    }
-                }
-            }
-            .show()
     }
 
     @SuppressLint("InflateParams")

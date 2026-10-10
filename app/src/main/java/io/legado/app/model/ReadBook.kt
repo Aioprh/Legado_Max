@@ -31,7 +31,6 @@ import io.legado.app.help.globalExecutor
 import io.legado.app.model.localBook.TextFile
 import io.legado.app.model.webBook.LazyContentCallback
 import io.legado.app.model.webBook.LazyContentManager
-import io.legado.app.model.webBook.LocalParagraphComment
 import io.legado.app.model.webBook.WebBook
 import io.legado.app.service.BaseReadAloudService
 import io.legado.app.service.CacheBookService
@@ -682,11 +681,10 @@ object ReadBook : CoroutineScope by MainScope() {
                 try {
                     val cachedContent = BookHelp.getContent(book, chapter)
                     cachedContent?.let {
-                        val content = LocalParagraphComment.injectIfNeeded(book, chapter, it)
                         contentLoadFinish(
                             book,
                             chapter,
-                            content,
+                            it,
                             upContent,
                             resetPageOffset,
                             success = success
@@ -790,8 +788,7 @@ object ReadBook : CoroutineScope by MainScope() {
                 val bookSource = bookSource
                 if (BookHelp.getContent(book, chapter) != null) {
                     val content = BookHelp.getContent(book, chapter)!!
-                    val injected = LocalParagraphComment.injectIfNeeded(book, chapter, content)
-                    contentLoadFinishAwait(book, chapter, injected, upContent, resetPageOffset)
+                    contentLoadFinishAwait(book, chapter, content, upContent, resetPageOffset)
                 } else if (bookSource != null && bookSource.nextPageLazyLoad) {
                     val lazyCallback = object : LazyContentCallback {
                         override fun onPageLoading(pageIndex: Int) {
@@ -821,8 +818,7 @@ object ReadBook : CoroutineScope by MainScope() {
                     contentLoadFinishLazy(book, chapter, content, lazyContent, upContent, resetPageOffset)
                 } else {
                     val content = downloadAwait(chapter)
-                    val injected = LocalParagraphComment.injectIfNeeded(book, chapter, content)
-                    contentLoadFinishAwait(book, chapter, injected, upContent, resetPageOffset)
+                    contentLoadFinishAwait(book, chapter, content, upContent, resetPageOffset)
                 }
                 success?.invoke()
             } catch (e: Exception) {
@@ -941,10 +937,9 @@ object ReadBook : CoroutineScope by MainScope() {
                 book.getUseReplaceRule(),
                 replaceBook = book.toReplaceBook()
             )
-            val paragraphCommentContent = LocalParagraphComment.injectIfNeeded(book, chapter, content)
             ensureActive()
             val contents = contentProcessor
-                .getContent(book, chapter, paragraphCommentContent, includeTitle = false)
+                .getContent(book, chapter, content, includeTitle = false)
             ensureActive()
             val textChapter = ChapterProvider.getTextChapterAsync(
                 this, book, chapter, displayTitle, contents, simulatedChapterSize
@@ -1039,9 +1034,8 @@ object ReadBook : CoroutineScope by MainScope() {
                 book.getUseReplaceRule(),
                 replaceBook = book.toReplaceBook()
             )
-            val paragraphCommentContent = LocalParagraphComment.injectIfNeeded(book, chapter, content)
             val contents = contentProcessor
-                .getContent(book, chapter, paragraphCommentContent, includeTitle = false)
+                .getContent(book, chapter, content, includeTitle = false)
             val textChapter = ChapterProvider.getTextChapterAsync(
                 this@ReadBook, book, chapter, displayTitle, contents, simulatedChapterSize
             )
@@ -1129,10 +1123,9 @@ object ReadBook : CoroutineScope by MainScope() {
                 book.getUseReplaceRule(),
                 replaceBook = book.toReplaceBook()
             )
-            val paragraphCommentContent = LocalParagraphComment.injectIfNeeded(book, chapter, content)
             ensureActive()
             val contents = contentProcessor
-                .getContent(book, chapter, paragraphCommentContent, includeTitle = false)
+                .getContent(book, chapter, content, includeTitle = false)
             val textChapter = ChapterProvider.getTextChapterAsync(
                 this, book, chapter, displayTitle, contents, simulatedChapterSize
             )

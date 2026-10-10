@@ -15,7 +15,6 @@ import io.legado.app.help.book.isLocal
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.coroutine.CompositeCoroutine
 import io.legado.app.help.coroutine.Coroutine
-import io.legado.app.model.webBook.LocalParagraphComment
 import io.legado.app.model.webBook.WebBook
 import io.legado.app.model.debug.ToastContext
 import io.legado.app.model.debug.ToastSourceType
@@ -582,10 +581,9 @@ object CacheBook {
                 onSuccess(chapter)
                 ReadBook.downloadedChapters.add(chapter.index)
                 ReadBook.downloadFailChapters.remove(chapter.index)
-                // 联网书/本地书首次下载正文后即注入段评气泡（缓存保持原始内容，避免重复注入）
                 downloadFinish(
                     chapter,
-                    LocalParagraphComment.injectIfNeeded(book, chapter, content),
+                    content,
                     resetPageOffset
                 )
             }.onError {

@@ -2177,7 +2177,7 @@ class TextChapterLayout(
     /**
      * 还原 option 的 JSON 字符串转义（\" -> "，\\ -> \），并解码 HTML 实体引号。
      *
-     * dp: 协议由本地段评注入（如 {@code QidianParagraphComment}）时，为避免 <img src="...">
+     * dp: 协议（段评气泡）的 option 为 JSON 字符串时，为避免 <img src="...">
      * 属性里的双引号截断，option 用 {@code &quot;} 转义；若不先解码成 "，GSON 会解析失败、
      * 兜底正则也匹配不到键，导致气泡能显示计数却拿不到 click（点击无反应仍翻页）。
      */

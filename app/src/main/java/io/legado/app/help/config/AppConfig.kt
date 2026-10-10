@@ -98,11 +98,6 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
     var showBoardLine = appCtx.getPrefInt(PreferKey.showBoardLine, 1)
     var adaptSpecialStyle = appCtx.getPrefBoolean(PreferKey.adaptSpecialStyle, true)
 
-    // ==================== 本地书段评配置 ====================
-    // 为本地书籍接入其他书源的段评（气泡+弹窗）
-    var localParagraphComment = appCtx.getPrefBoolean(PreferKey.localParagraphComment, false)
-    var localParagraphSource: String? = appCtx.getPrefString(PreferKey.localParagraphSource)
-
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         when (key) {
             PreferKey.editFontScale -> editFontScale = appCtx.getPrefInt(PreferKey.editFontScale, 16)
@@ -111,11 +106,6 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             PreferKey.editAutoComplete -> editAutoComplete = appCtx.getPrefBoolean(PreferKey.editAutoComplete, true)
             PreferKey.showBoardLine -> showBoardLine = appCtx.getPrefInt(PreferKey.showBoardLine, 1)
             PreferKey.adaptSpecialStyle -> adaptSpecialStyle = appCtx.getPrefBoolean(PreferKey.adaptSpecialStyle, true)
-
-            PreferKey.localParagraphComment -> localParagraphComment =
-                appCtx.getPrefBoolean(PreferKey.localParagraphComment, false)
-            PreferKey.localParagraphSource -> localParagraphSource =
-                appCtx.getPrefString(PreferKey.localParagraphSource)
 
             PreferKey.themeMode -> {
                 themeMode = appCtx.getPrefString(PreferKey.themeMode, "0")

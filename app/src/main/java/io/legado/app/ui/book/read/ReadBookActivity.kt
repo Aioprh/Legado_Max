@@ -61,8 +61,6 @@ import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.model.ReadAloud
 import io.legado.app.model.ReadBook
-import io.legado.app.model.ParagraphBubbleRenderer
-import io.legado.app.model.webBook.LocalParagraphComment
 import io.legado.app.model.analyzeRule.AnalyzeRule
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setChapter
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setCoroutineContext
@@ -1708,43 +1706,10 @@ class ReadBookActivity : BaseReadBookActivity(),
     }
 
     override fun clickImg(click: String, src: String) {
-        // 起点直连段评没有 BookSource，不能走普通图片 click 的 source.evalJS 流程。
-        // 直接从 pclick 中取出 bookId/chapterId/paragraphId，打开原生段评弹窗。
-        if (ParagraphBubbleRenderer.isBubbleSrc(src) && click.contains("showQidianParagraphComments", true)) {
-            val regex = Regex("""showQidianParagraphComments\s*\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\s*,\s*(\d+)\s*\)""", RegexOption.IGNORE_CASE)
-            val match = regex.find(click)
-            if (match != null) {
-                val bookId = match.groupValues[1]
-                val chapterId = match.groupValues[2]
-                val paragraphId = match.groupValues[3].toIntOrNull()
-                if (paragraphId != null) {
-                    runOnUiThread {
-                        showDialogFragment(
-                            ParagraphCommentDialog(bookId, chapterId, paragraphId, true)
-                        )
-                    }
-                    return
-                }
-            }
-            AppLog.put("起点段评点击脚本解析失败: $click")
-            return
-        }
-
-
         Coroutine.async(lifecycleScope,IO) {
             val book = ReadBook.book ?: return@async
             val chapter = appDb.bookChapterDao.getChapter(book.bookUrl, ReadBook.durChapterIndex) ?: throw Exception("no find chapter")
-            var source = ReadBook.bookSource
-            // 段评气泡：本地书无书源，或本书（含联网书）单独配置了段评书源时，
-            // 用“本书单独配置优先、其次全局（仅本地书）”的段评书源执行气泡 pclick
-            if (ParagraphBubbleRenderer.isBubbleSrc(src)) {
-                val curBook = ReadBook.book
-                val paraSource = curBook?.let { LocalParagraphComment.sourceUrlFor(it) }
-                    ?.let { appDb.bookSourceDao.getBookSource(it) }
-                if (paraSource != null) {
-                    source = paraSource
-                }
-            }
+            val source = ReadBook.bookSource
             if (source == null) return@async
             // 旧版段评 pclick（java.showBrowser 纯文本）兼容：自动升级为原生段评弹窗
             if (ParagraphCommentDialog.tryUpgradeOldPclick(this@ReadBookActivity, source, book, chapter, click)) {
