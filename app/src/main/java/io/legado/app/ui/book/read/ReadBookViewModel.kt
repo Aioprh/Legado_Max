@@ -481,7 +481,13 @@ class ReadBookViewModel(application: Application) : BaseViewModel(application) {
             appDb.bookChapterDao.getChapter(book.bookUrl, ReadBook.durChapterIndex)
                 ?.let { chapter ->
                     BookHelp.delContent(book, chapter)
-                    ReadBook.loadContent(ReadBook.durChapterIndex, resetPageOffset = false)
+                    // 刷新为显式操作，强制重新加载，避免被进行中的加载去重逻辑拦截
+                    // 导致页面一直停留在“加载数据中”
+                    ReadBook.loadContent(
+                        ReadBook.durChapterIndex,
+                        resetPageOffset = false,
+                        forceReload = true
+                    )
                 }
         }
     }

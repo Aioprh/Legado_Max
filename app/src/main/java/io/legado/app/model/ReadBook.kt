@@ -1,5 +1,6 @@
 package io.legado.app.model
 
+import io.legado.app.R
 import io.legado.app.constant.AppLog
 import io.legado.app.constant.EventBus
 import io.legado.app.constant.PageAnim.scrollPageAnim
@@ -674,40 +675,50 @@ object ReadBook : CoroutineScope by MainScope() {
         success: (() -> Unit)? = null
     ) {
         Coroutine.async {
-            val book = book!!
+            val book = book ?: return@async
             val chapter = appDb.bookChapterDao.getChapter(book.bookUrl, index)
                 ?: return@async
             if (addLoading(index, forceReload)) {
-                val cachedContent = BookHelp.getContent(book, chapter)
-                cachedContent?.let {
-                    val content = LocalParagraphComment.injectIfNeeded(book, chapter, it)
-                    contentLoadFinish(
-                        book,
-                        chapter,
-                        content,
-                        upContent,
-                        resetPageOffset,
-                        success = success
-                    )
-                } ?: let {
-                    val bookSource = bookSource
-                    if (bookSource != null && bookSource.nextPageLazyLoad) {
-                        AppLog.putReaderDebug("懒加载: 走懒加载分支 章节${chapter.index}")
-                        loadContentLazy(book, chapter, upContent, resetPageOffset, success)
-                    } else {
-                        download(
-                            downloadScope,
+                try {
+                    val cachedContent = BookHelp.getContent(book, chapter)
+                    cachedContent?.let {
+                        val content = LocalParagraphComment.injectIfNeeded(book, chapter, it)
+                        contentLoadFinish(
+                            book,
                             chapter,
-                            resetPageOffset
+                            content,
+                            upContent,
+                            resetPageOffset,
+                            success = success
                         )
+                    } ?: let {
+                        val bookSource = bookSource
+                        if (bookSource != null && bookSource.nextPageLazyLoad) {
+                            AppLog.putReaderDebug("懒加载: 走懒加载分支 章节${chapter.index}")
+                            loadContentLazy(book, chapter, upContent, resetPageOffset, success)
+                        } else {
+                            download(
+                                downloadScope,
+                                chapter,
+                                resetPageOffset
+                            )
+                        }
+                    }
+                } catch (e: Throwable) {
+                    // 异常时清理加载标记，避免后续刷新被去重逻辑拦截而永久停留在“加载数据中”
+                    removeLoading(index)
+                    if (e is CancellationException) throw e
+                    AppLog.put("加载正文出错\n${e.localizedMessage}", e)
+                    if (index == durChapterIndex && curTextChapter == null) {
+                        upMsg(appCtx.getString(R.string.load_error_retry))
                     }
                 }
             }
         }.onError {
             AppLog.put("加载正文出错\n${it.localizedMessage}", it)
-            // 仅在当前阅读章节加载失败时向用户展示错误提示
-            if (index == durChapterIndex) {
-                upMsg("加载正文出错: ${it.localizedMessage}")
+            // 仅在当前阅读章节加载失败且尚无内容时向用户展示可重试提示
+            if (index == durChapterIndex && curTextChapter == null) {
+                upMsg(appCtx.getString(R.string.load_error_retry))
             }
         }
     }
@@ -757,7 +768,12 @@ object ReadBook : CoroutineScope by MainScope() {
             success?.invoke()
         }.onError {
             AppLog.put("加载正文出错\n${it.localizedMessage}", it)
-            upMsg("加载正文出错: ${it.localizedMessage}")
+            // 懒加载异常同样需要清理加载标记，否则刷新会被去重逻辑拦截
+            removeLoading(chapter.index)
+            // 仅当前阅读章节失败且尚无内容时提示，避免预加载兄弟章节失败覆盖正文
+            if (chapter.index == durChapterIndex && curTextChapter == null) {
+                upMsg(appCtx.getString(R.string.load_error_retry))
+            }
         }
     }
 
@@ -877,7 +893,12 @@ object ReadBook : CoroutineScope by MainScope() {
 
     @Synchronized
     private fun addLoading(index: Int, forceReload: Boolean = false): Boolean {
-        if (!forceReload && loadingChapters.contains(index)) return false
+        if (loadingChapters.contains(index)) {
+            if (!forceReload) return false
+            // 强制重新加载：先移除旧的加载标记再重新加入，避免标记重复计数
+            // 导致 removeLoading 清理不干净，后续非强制加载被去重逻辑永久拦截
+            loadingChapters.remove(index)
+        }
         loadingChapters.add(index)
         return true
     }
@@ -901,7 +922,15 @@ object ReadBook : CoroutineScope by MainScope() {
         success: (() -> Unit)? = null
     ) {
         removeLoading(chapter.index)
-        if (canceled || chapter.index !in durChapterIndex - 1..durChapterIndex + 1) {
+        if (chapter.index !in durChapterIndex - 1..durChapterIndex + 1) {
+            return
+        }
+        // 当前章节加载被取消且尚无排版结果时，给出可重试提示，
+        // 避免刷新后页面永久停留在“加载数据中”
+        if (canceled) {
+            if (chapter.index == durChapterIndex && curTextChapter == null) {
+                upMsg(appCtx.getString(R.string.load_error_retry))
+            }
             return
         }
         chapterLoadingJobs[chapter.index]?.cancel()
@@ -924,6 +953,8 @@ object ReadBook : CoroutineScope by MainScope() {
                 0 -> curChapterLoadingLock.withLock {
                     withContext(Main) {
                         ensureActive()
+                        // 内容已就绪，清除此前的失败/加载提示，避免占据页面
+                        msg = null
                         curTextChapter = textChapter
                     }
                     callBack?.upMenuView()
@@ -978,6 +1009,11 @@ object ReadBook : CoroutineScope by MainScope() {
             }
             AppLog.put("ChapterProvider ERROR", it)
             appCtx.toastOnUi("ChapterProvider ERROR:\n${it.stackTraceStr}")
+            // 排版/内容处理异常时，若当前章节尚无内容，则给出可重试提示，
+            // 避免页面永久停留在“加载数据中”
+            if (chapter.index == durChapterIndex && curTextChapter == null) {
+                upMsg(appCtx.getString(R.string.load_error_retry))
+            }
         }.onSuccess {
             success?.invoke()
         }
@@ -1013,6 +1049,8 @@ object ReadBook : CoroutineScope by MainScope() {
                 0 -> {
                     curTextChapter?.cancelLayout()
                     withContext(Main) {
+                        // 内容已就绪，清除此前的失败/加载提示，避免占据页面
+                        msg = null
                         curTextChapter = textChapter
                     }
                     callBack?.upMenuView()
@@ -1065,6 +1103,10 @@ object ReadBook : CoroutineScope by MainScope() {
             }
             AppLog.put("ChapterProvider ERROR", it)
             appCtx.toastOnUi("ChapterProvider ERROR:\n${it.stackTraceStr}")
+            // 排版/内容处理异常时，若当前章节尚无内容，则给出可重试提示
+            if (chapter.index == durChapterIndex && curTextChapter == null) {
+                upMsg(appCtx.getString(R.string.load_error_retry))
+            }
         }
     }
 
@@ -1103,6 +1145,8 @@ object ReadBook : CoroutineScope by MainScope() {
                 0 -> {
                     curTextChapter?.cancelLayout()
                     withContext(Main) {
+                        // 内容已就绪，清除此前的失败/加载提示，避免占据页面
+                        msg = null
                         curTextChapter = textChapter
                     }
                     callBack?.upMenuView()
@@ -1152,6 +1196,10 @@ object ReadBook : CoroutineScope by MainScope() {
         } catch (e: Exception) {
             AppLog.put("ChapterProvider ERROR", e)
             appCtx.toastOnUi("ChapterProvider ERROR:\n${e.stackTraceStr}")
+            // 排版/内容处理异常时，若当前章节尚无内容，则给出可重试提示
+            if (chapter.index == durChapterIndex && curTextChapter == null) {
+                upMsg(appCtx.getString(R.string.load_error_retry))
+            }
         }
     }
 
