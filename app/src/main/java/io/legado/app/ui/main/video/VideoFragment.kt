@@ -28,7 +28,6 @@ import io.legado.app.data.entities.rule.ExploreKind
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.source.exploreKinds
 import io.legado.app.lib.theme.primaryTextColor
-import io.legado.app.ui.book.explore.ExploreShowActivity
 import io.legado.app.model.webBook.WebBook
 import io.legado.app.ui.main.MainFragmentInterface
 import io.legado.app.ui.main.MainActivity
@@ -71,6 +70,9 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
 
     private var currentSource: BookSourcePart? = null
     private var currentKinds: List<ExploreKind> = emptyList()
+
+    // 当前选中、并展示在首页主内容区的分类下标
+    private var selectedKindIndex = 0
 
     // 书源加载与内容加载各自的 Job；切换书源或页面时取消，避免旧请求回填与内存浪费
     private var sourcesJob: Job? = null
@@ -388,6 +390,7 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
             }
             if (!isAdded || view == null || currentSource?.bookSourceUrl != part.bookSourceUrl) return@launch
             currentKinds = kinds
+            selectedKindIndex = 0
             categorySectionsContainer.removeAllViews()
             heroContainer.removeAllViews()
             featuredContainer.removeAllViews()
@@ -404,16 +407,22 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
             return
         }
         sourceHint.visibility = View.GONE
-        kinds.forEach { kind ->
+        kinds.forEachIndexed { index, kind ->
             val chip = TextView(requireContext()).apply {
                 text = kind.title
                 textSize = 14f
                 gravity = Gravity.CENTER
                 setTextColor(primaryTextColor)
                 setPadding(18.dpToPx(), 9.dpToPx(), 18.dpToPx(), 9.dpToPx())
-                // 所有分类样式保持一致；此前硬编码仅第 0 项使用深色底，导致只有第一个分类看起来像被选中
-                background = requireContext().getDrawable(R.drawable.bg_popup_menu)
-                setOnClickListener { openCategory(kind) }
+                // 仅当前选中的分类使用深色底，点击后原地切换主内容区
+                background = requireContext().getDrawable(
+                    if (index == selectedKindIndex) {
+                        R.drawable.bg_video_chapter_item
+                    } else {
+                        R.drawable.bg_popup_menu
+                    }
+                )
+                setOnClickListener { selectKind(kind, index) }
             }
             categoryContainer.addView(
                 chip,
@@ -427,8 +436,22 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
         }
     }
 
+    /**
+     * 切换分类：原地重载主内容区（选中高亮 + 卷首推荐 + 其余分类区块），
+     * 不再跳转到新的发现页。
+     */
+    private fun selectKind(kind: ExploreKind, index: Int) {
+        val part = currentSource ?: return
+        if (index == selectedKindIndex) return
+        selectedKindIndex = index
+        renderCategories(currentKinds)
+        loadFeatured(part, kind)
+    }
+
     private fun loadFeatured(part: BookSourcePart, kind: ExploreKind?) {
         featuredContainer.removeAllViews()
+        // 切换分类时先清空旧内容，避免加载期间仍显示上一个分类的卷首推荐
+        heroContainer.removeAllViews()
         featuredTitle.text = kind?.title?.takeIf { it.isNotBlank() } ?: getString(R.string.video_recommend)
         val url = kind?.url ?: run {
             sourceHint.text = getString(R.string.video_no_featured_hint)
@@ -449,7 +472,8 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
             }
             if (!isAdded || view == null || currentSource?.bookSourceUrl != part.bookSourceUrl) return@launch
             renderFeatured(books)
-            loadCategorySections(part, currentKinds.drop(1).take(4))
+            // 下方区块展示除当前选中分类以外的分类，避免与主内容区重复
+            loadCategorySections(part, currentKinds.filterIndexed { i, _ -> i != selectedKindIndex }.take(4))
         }
     }
 
@@ -672,17 +696,6 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
             }
             .setNegativeButton(R.string.video_close, null)
             .show()
-    }
-
-    private fun openCategory(kind: ExploreKind) {
-        val source = currentSource ?: return
-        val url = kind.url ?: return
-        startActivity<ExploreShowActivity> {
-            putExtra("sourceUrl", source.bookSourceUrl)
-            putExtra("exploreUrl", url)
-            putExtra("exploreName", kind.title)
-            putExtra("videoMode", true)
-        }
     }
 
     override fun updateMainBottomPadding(bottomPadding: Int) {
