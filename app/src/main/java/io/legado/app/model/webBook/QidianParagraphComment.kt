@@ -195,8 +195,66 @@ object QidianParagraphComment {
         return id.takeIf { it.matches(Regex("\\d+")) }
     }
 
-    suspend fun inject(book: Book, chapter: BookChapter, content: String): String {
-        val id = bookId(book.readConfig?.paragraphCommentSource) ?: return content
+    /** 书名|作者 -> 自动匹配的起点作品 ID（null 表示未匹配到，避免重复搜索） */
+    private val autoBookIdCache = HashMap<String, String?>()
+
+    /**
+     * 解析书绑定的起点作品 ID。
+     * - `qidian://<id>`：直接使用绑定 ID；
+     * - `qidian://`（无 ID，默认值）：按书名 + 作者在起点搜索自动匹配。
+     */
+    suspend fun resolveBookIdByBook(book: Book, binding: String?): String? {
+        bookId(binding)?.let { return it }
+        if (!isBinding(binding)) return null
+        return autoMatchBookId(book.name, book.author)
+    }
+
+    /**
+     * 在搜索结果中按书名 + 作者挑选最佳匹配（“直接适配”）。
+     * 依次尝试：书名+作者精确匹配 → 书名精确匹配 → 书名互相包含 → 首条结果。
+     */
+    fun pickBestMatch(results: List<SearchResult>, name: String, author: String): SearchResult? {
+        if (results.isEmpty()) return null
+        val n = normalizeTitle(name)
+        val a = normalizeTitle(author)
+        return results.firstOrNull { r ->
+            normalizeTitle(r.name) == n && (a.isEmpty() || normalizeTitle(r.author) == a)
+        } ?: results.firstOrNull { normalizeTitle(it.name) == n }
+            ?: results.firstOrNull {
+                val rn = normalizeTitle(it.name)
+                rn.isNotEmpty() && (rn.contains(n) || n.contains(rn))
+            }
+            ?: results.firstOrNull()
+    }
+
+    /**
+     * 按书名 + 作者自动匹配起点作品 ID（“直接适配”）。
+     */
+    private suspend fun autoMatchBookId(name: String, author: String): String? = withContext(Dispatchers.IO) {
+        val bookName = name.trim()
+        if (bookName.isEmpty()) return@withContext null
+        val key = bookName + "|" + author.trim()
+        synchronized(autoBookIdCache) {
+            if (autoBookIdCache.containsKey(key)) return@withContext autoBookIdCache[key]
+        }
+        val results = runCatching { searchBooks(bookName) }.getOrDefault(emptyList())
+        val id = pickBestMatch(results, bookName, author)?.bookId
+        synchronized(autoBookIdCache) { autoBookIdCache[key] = id }
+        if (id != null) {
+            AppLog.putReaderDebug("起点直连段评: 按书名/作者自动匹配《$bookName》-> $id")
+        } else {
+            AppLog.putReaderDebug("起点直连段评: 未匹配到起点作品《$bookName》($author)")
+        }
+        id
+    }
+
+    suspend fun inject(
+        book: Book,
+        chapter: BookChapter,
+        content: String,
+        binding: String? = book.readConfig?.paragraphCommentSource
+    ): String {
+        val id = resolveBookIdByBook(book, binding) ?: return content
         val chapterId = resolveChapterId(id, chapter) ?: run {
             AppLog.putReaderDebug("本地书段评: 起点目录未匹配章节《" + chapter.title + "》")
             return content

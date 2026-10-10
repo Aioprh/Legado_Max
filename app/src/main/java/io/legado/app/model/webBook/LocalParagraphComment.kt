@@ -55,14 +55,21 @@ object LocalParagraphComment {
     /**
      * 获取某本书的段评书源 URL。
      * 每本书单独配置（book.config.paragraphComment）优先；未单独开启或未选书源时，
-     * 仅本地书回退全局配置。联网书必须每本书单独配置，避免与书源自身的段评冲突。
+     * 本地书回退全局配置，联网书必须每本书单独开启（避免与书源自身的段评冲突）。
+     *
+     * 未显式选择段评书源时，默认使用“起点直连”（[QidianParagraphComment.BINDING_PREFIX]）：
+     * 由 [QidianParagraphComment] 按书名 + 作者自动匹配起点作品，无需书源、本地书与联网书通用。
      */
     fun sourceUrlFor(book: Book): String? {
         val config = book.readConfig
         return when {
             config?.paragraphComment == true ->
-                config.paragraphCommentSource?.takeIf { it.isNotBlank() } ?: AppConfig.localParagraphSource
-            book.isLocal && AppConfig.localParagraphComment -> AppConfig.localParagraphSource
+                config.paragraphCommentSource?.takeIf { it.isNotBlank() }
+                    ?: AppConfig.localParagraphSource?.takeIf { it.isNotBlank() }
+                    ?: QidianParagraphComment.BINDING_PREFIX
+            book.isLocal && AppConfig.localParagraphComment ->
+                AppConfig.localParagraphSource?.takeIf { it.isNotBlank() }
+                    ?: QidianParagraphComment.BINDING_PREFIX
             else -> null
         }
     }
@@ -74,9 +81,10 @@ object LocalParagraphComment {
     suspend fun injectIfNeeded(book: Book, chapter: BookChapter, content: String): String {
         val sourceUrl = sourceUrlFor(book) ?: return content
 
-        // 起点直连模式：完全绕过 BookSource，适用于 TXT/EPUB 等本地书。
+        // 起点直连模式：完全绕过 BookSource，本地书（TXT/EPUB）与联网书通用。
+        // 未绑定作品 ID 时由 QidianParagraphComment 按书名 + 作者自动匹配。
         if (QidianParagraphComment.isBinding(sourceUrl)) {
-            return QidianParagraphComment.inject(book, chapter, content)
+            return QidianParagraphComment.inject(book, chapter, content, sourceUrl)
         }
 
         val source = appDb.bookSourceDao.getBookSource(sourceUrl)?.takeIf { it.enabled }
