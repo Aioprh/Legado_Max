@@ -10,6 +10,7 @@ import android.widget.ImageView
 import android.widget.Toast
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.view.setPadding
 import androidx.appcompat.app.AlertDialog
@@ -26,15 +27,16 @@ import io.legado.app.data.entities.SearchBook
 import io.legado.app.data.entities.rule.ExploreKind
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.source.exploreKinds
-import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.ui.book.explore.ExploreShowActivity
 import io.legado.app.model.webBook.WebBook
 import io.legado.app.ui.main.MainFragmentInterface
 import io.legado.app.ui.main.MainActivity
 import io.legado.app.ui.widget.SourceSelectDialog
+import io.legado.app.utils.applyStatusBarPadding
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.startActivity
+import io.legado.app.utils.statusBarHeight
 import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Job
@@ -82,10 +84,25 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
+        // 用 ScrollView 包裹内容，保证影视首页内容超出屏幕时可以上下滚动
+        val scroll = ScrollView(requireContext()).apply {
+            isVerticalScrollBarEnabled = false
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            // 顶部让出状态栏高度，避免内容被状态栏遮挡
+            applyStatusBarPadding()
+        }
         root = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(Color.TRANSPARENT)
         }
+        scroll.addView(
+            root,
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
 
         val header = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -193,12 +210,20 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
         }
         root.addView(desc)
 
-        return root
+        return scroll
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         updateMainBottomPadding((activity as? MainActivity)?.mainContentBottomPadding() ?: 0)
+        // 兜底：部分设备（低版本 Android / 鸿蒙）不派发 WindowInsets，
+        // 此时 applyStatusBarPadding 拿到的高度为 0，这里主动补一次状态栏高度
+        view.post {
+            val ctx = context ?: return@post
+            if (view.paddingTop == 0) {
+                view.setPadding(view.paddingLeft, ctx.statusBarHeight, view.paddingRight, view.paddingBottom)
+            }
+        }
     }
 
     override fun onResume() {
@@ -379,16 +404,15 @@ class VideoFragment() : Fragment(), MainFragmentInterface {
             return
         }
         sourceHint.visibility = View.GONE
-        kinds.forEachIndexed { index, kind ->
+        kinds.forEach { kind ->
             val chip = TextView(requireContext()).apply {
                 text = kind.title
                 textSize = 14f
                 gravity = Gravity.CENTER
                 setTextColor(primaryTextColor)
                 setPadding(18.dpToPx(), 9.dpToPx(), 18.dpToPx(), 9.dpToPx())
-                background = requireContext().getDrawable(
-                    if (index == 0) R.drawable.bg_video_chapter_item else R.drawable.bg_popup_menu
-                )
+                // 所有分类样式保持一致；此前硬编码仅第 0 项使用深色底，导致只有第一个分类看起来像被选中
+                background = requireContext().getDrawable(R.drawable.bg_popup_menu)
                 setOnClickListener { openCategory(kind) }
             }
             categoryContainer.addView(
