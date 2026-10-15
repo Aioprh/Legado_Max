@@ -77,9 +77,17 @@ object LocalParagraphComment {
     )
 
     /**
+     * 「联网书自动接入段评」总开关。
+     * 打开时，联网书只要其书源本身自带段评能力（[FanqieAdapter.looksLikeSelfSource]）就直接注入，
+     * 无需逐本去「书籍详情 → 段评设置」开启；改成 false 可退回逐本手动开。
+     */
+    private const val AUTO_SELF_PARAGRAPH_COMMENT = true
+
+    /**
      * 获取某本书的段评书源 URL。
      * 每本书单独配置（book.config.paragraphComment）优先；未单独开启或未选书源时，
-     * 本地书回退全局配置，联网书必须每本书单独开启（避免与书源自身的段评冲突）。
+     * 本地书回退全局配置；联网书在 [AUTO_SELF_PARAGRAPH_COMMENT] 打开且本书源自带段评能力时
+     * 返回本书源自身，否则返回 null。
      *
      * 起点直连模式（[QidianParagraphComment.BINDING_PREFIX] + 作品 ID）由用户手动搜索或粘贴
      * 起点作品链接绑定，不再按书名/作者自动匹配；未绑定时不注入段评。
@@ -92,6 +100,11 @@ object LocalParagraphComment {
                     ?: AppConfig.localParagraphSource?.takeIf { it.isNotBlank() }
             book.isLocal && AppConfig.localParagraphComment ->
                 AppConfig.localParagraphSource?.takeIf { it.isNotBlank() }
+            // 【番茄自动接入】联网书：本书书源本身就是番茄段评源 → 打开即有气泡，无需逐本开。
+            // 只放「自带段评能力」的源（URL 含 fqnovel.com / fanqie）过去；其余联网书仍返回 null，
+            // 避免为它们白跑一遍「搜索远程书 → 拉全量目录 → 章节名匹配」的跨源流程。
+            AUTO_SELF_PARAGRAPH_COMMENT && !book.isLocal && book.origin.isNotBlank() &&
+                FanqieAdapter.looksLikeSelfSource(book.origin) -> book.origin
             else -> null
         }
     }
@@ -526,10 +539,16 @@ object LocalParagraphComment {
         private const val IDEA_LIST_API =
             "https://api5-normal-sinfonlinec.fqnovel.com/reading/ugc/idea/list/v1/"
 
+        /**
+         * 「书源自带段评能力」的共用判据（只按 URL）。
+         * 供 [sourceUrlFor] 的联网书自动接入分支与 [match] 复用：
+         * URL 含 `fqnovel.com` / `fanqie` 即认定为番茄段评源。
+         */
+        fun looksLikeSelfSource(url: String): Boolean =
+            url.contains("fqnovel.com", true) || url.contains("fanqie", true)
+
         override fun match(source: BookSource): Boolean {
-            val url = source.bookSourceUrl
-            return url.contains("fqnovel.com", true) ||
-                url.contains("fanqie", true) ||
+            return looksLikeSelfSource(source.bookSourceUrl) ||
                 source.bookSourceName.contains("番茄")
         }
 
