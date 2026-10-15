@@ -67,10 +67,11 @@ data class ReviewRule(
     var deleteUrl: String? = null,          // 删除段评URL
 
     // 6) 发段评入口（可选）：长按段落菜单的「发段评」在选中段落没有书源注入的段评气泡时回退到这里。
-    //    值写 @js 脚本，App 用书源 evalJS 执行（注入 java/book/chapter/cache），
-    //    result = 选中段落的正文段号（0 起，不含章节标题），src = 段落原文；
-    //    脚本自行决定打开发段评界面（java.showBrowser / java.showParagraphComments 等）。
-    var postUrl: String? = null,
+    //    值写 @js 脚本，App 用书源 evalJS 执行（注入 java/book/chapter/cache），src = 选中段落原文；
+    //    App 侧段号口径（paragraphNum 含章节标题）与书源 para_index（去标题 0 基）不一致，
+    //    因此不传段号，由书源据 src 原文自行反查段号后打开发段评界面
+    //    （java.showBrowser / java.showParagraphComments 等）。
+    var postReviewEntry: String? = null,
 ) : Parcelable {
 
     companion object {

@@ -1023,7 +1023,7 @@ class ReadBookActivity : BaseReadBookActivity(),
 
     /**
      * 发段评：优先复用选中段落由书源注入的段评气泡 click 脚本（含无评论段落的加号气泡）；
-     * 该段没有气泡时回退到书源 ruleReview.postUrl 脚本；两者都没有则提示不支持。
+     * 该段没有气泡时回退到书源 ruleReview.postReviewEntry 脚本；两者都没有则提示不支持。
      */
     private fun postParagraphReview() {
         val curPage = binding.readView.curPage
@@ -1040,9 +1040,9 @@ class ReadBookActivity : BaseReadBookActivity(),
                 return
             }
         }
-        // 2. 回退：书源 ruleReview.postUrl 脚本
+        // 2. 回退：书源 ruleReview.postReviewEntry 脚本
         val source = ReadBook.bookSource
-        val postJs = source?.getReviewRule()?.postUrl?.takeIf { it.isNotBlank() }
+        val postJs = source?.getReviewRule()?.postReviewEntry?.takeIf { it.isNotBlank() }
         if (source != null && postJs != null) {
             val js = postJs
                 .let { if (it.startsWith("@js:")) it.substring(4) else it }
@@ -1053,13 +1053,11 @@ class ReadBookActivity : BaseReadBookActivity(),
                     ?: throw NoStackTraceException("no find chapter")
                 val java = SourceLoginJsExtensions(this@ReadBookActivity, source, BookType.text)
                 val paragraphText = collectParagraphText(paragraphNum)
-                val result = if (paragraphNum > 0) paragraphNum - 1 else 0
                 runScriptWithContext {
                     source.evalJS(js) {
                         put("java", java)
                         put("book", book)
                         put("chapter", chapter)
-                        put("result", result)
                         put("src", paragraphText)
                     }
                 }
@@ -1073,7 +1071,13 @@ class ReadBookActivity : BaseReadBookActivity(),
     }
 
     /**
-     * 在选中段落所在页及后续页中查找该段落的段评气泡列
+     * 在选中段落所在页及后续页中查找该段落的段评入口图片列。
+     *
+     * 书源注入的段评入口有两种形态，不能用 [ParagraphBubbleRenderer.isBubbleSrc] 单独判定：
+     * 1) 原生软件气泡：src 为 `bubble://paragraph?...`（书源直接输出，或开启「强制软件气泡」后由 App 转换）；
+     * 2) 书源自绘入口：src 为普通/内联 SVG 图片（如番茄源 `data:image/svg+xml;base64,...`），
+     *    点击脚本保存在 img 的 option 里，经 TextChapterLayout 存入 [ImageColumn.click]。
+     * 因此只要「原生气泡」或「带非空 click 脚本」即视为可点击的段评入口。
      */
     private fun findParagraphBubbleColumn(paragraphNum: Int): ImageColumn? {
         if (paragraphNum <= 0) return null
@@ -1082,7 +1086,8 @@ class ReadBookActivity : BaseReadBookActivity(),
             curPage.relativePage(pagePos).lines.forEach { line ->
                 if (line.paragraphNum != paragraphNum) return@forEach
                 line.columns.forEach { column ->
-                    if (column is ImageColumn && ParagraphBubbleRenderer.isBubbleSrc(column.src)) {
+                    if (column !is ImageColumn) return@forEach
+                    if (ParagraphBubbleRenderer.isBubbleSrc(column.src) || !column.click.isNullOrBlank()) {
                         return column
                     }
                 }
