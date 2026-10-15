@@ -9,8 +9,12 @@ import io.legado.app.data.entities.BookSource
 import io.legado.app.help.book.isLocal
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.http.CookieStore
+import io.legado.app.model.analyzeRule.AnalyzeRule
+import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setCoroutineContext
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.ui.widget.dialog.ParagraphCommentConfig
+import com.google.gson.JsonObject
+import io.legado.app.utils.INITIAL_GSON
 import io.legado.app.utils.jsonPath
 import kotlinx.coroutines.currentCoroutineContext
 import java.net.URLEncoder
@@ -45,10 +49,30 @@ object LocalParagraphComment {
     /** 远程章节 URL -> 段评摘要（空摘要=该章无段评）。避免重复阅读同一章节时反复请求 */
     private val summaryCache = HashMap<String, SummaryResult>()
 
+    /**
+     * 「本书源自身即段评源」模式的摘要缓存（带时间戳）。
+     * 与 [summaryCache] 分开，允许短期过期：这是「发完段评回到本章能不能立刻看到新数字」的关键。
+     */
+    private val selfSummaryCache = HashMap<String, CachedSummary>()
+
+    /**
+     * 自身段评源模式的摘要缓存有效期（毫秒）。只用于合并「同一次打开章节」产生的重复调用
+     * （翻页/预取会让 loadContent 多次触发注入），设太大会导致发完段评回来仍是旧数字，
+     * 因此在「实时」与「去重」之间取一个很小的值。
+     */
+    private const val SELF_SUMMARY_TTL_MS = 3_000L
+
+    /** 带时间戳的摘要缓存项 */
+    private data class CachedSummary(val result: SummaryResult, val at: Long)
+
+    /** 正文首行是否为章节标题（与书源 jsLib 里 fqDpInject / fqDpParaOf 的判据保持一致） */
+    private val TITLE_LINE_REGEX = Regex("""^\s*第\s*[0-9零一二三四五六七八九十百千万两]+\s*[章节回]""")
+
     private val adapters: List<ParagraphAdapter> = listOf(
         ShenmoAdapter,
         QidianFullAdapter,
         JiuJiuAdapter,
+        FanqieAdapter,
         GenericAdapter
     )
 
@@ -88,6 +112,11 @@ object LocalParagraphComment {
         val source = appDb.bookSourceDao.getBookSource(sourceUrl)?.takeIf { it.enabled }
             ?: return content
         val adapter = adapters.firstOrNull { it.match(source) } ?: return content
+        // 【番茄实时气泡】本书源自身即段评源：直接用本书的 book_id/item_id 取数，
+        // 不走「搜索远程书 → 拉全量目录 → 按章节名映射」那套跨源流程（对联网书既慢又易错）。
+        if (adapter.selfSource && sourceUrl.trim() == book.origin.trim()) {
+            return injectSelf(book, chapter, content, source, adapter)
+        }
         val remoteBook = getRemoteBook(book, source) ?: return content
         val remoteChapterUrl = getRemoteChapterUrl(book, chapter, source, remoteBook)
             ?: return content
@@ -332,13 +361,18 @@ object LocalParagraphComment {
         append(",\\\"status\\\":\\\"normal\\\"}")
     }
 
-    private fun injectByPosition(content: String, source: BookSource, adapter: ParagraphAdapter, bookId: String, chapterId: String, chapterUrl: String, counts: Map<Int, Int>): String {
+    /**
+     * 按「正文非空行序（1 基）」注入气泡。
+     * [apiPids] 把注入用的行序映射回站点自己的段号：番茄的 para_index 是 0 基且不含章节标题，
+     * 与行序正好差 1；起点系的 ParagraphId 本身就等于行序，故缺省时两者相同。
+     */
+    private fun injectByPosition(content: String, source: BookSource, adapter: ParagraphAdapter, bookId: String, chapterId: String, chapterUrl: String, counts: Map<Int, Int>, apiPids: Map<Int, Int> = emptyMap()): String {
         val lines = content.replace("\r\n", "\n").split("\n"); var pid = 0; val out = ArrayList<String>(lines.size)
         for (line in lines) {
             if (line.trim().isEmpty()) { out.add(line); continue }
             pid++; val count = counts[pid] ?: 0
             if (count > 0) {
-                val pclick = adapter.buildPclick(source, bookId, chapterId, pid, chapterUrl)
+                val pclick = adapter.buildPclick(source, bookId, chapterId, apiPids[pid] ?: pid, chapterUrl)
                 if (pclick.isNotBlank()) out.add("$line<img src=\"dp:$count,${bubbleOption(pclick, count)}\">") else out.add(line)
             } else out.add(line)
         }
@@ -404,12 +438,265 @@ object LocalParagraphComment {
 
     data class SummaryResult(val counts: Map<Int, Int> = emptyMap(), val apiPids: Map<Int, Int> = emptyMap(), val remoteParagraphs: List<String> = emptyList())
 
+    // ==================== 「本书源自身即段评源」注入（番茄实时气泡） ====================
+
+    /**
+     * 本书源自身即段评源：按本书的 book_id/item_id 取本章段评摘要并注入气泡。
+     *
+     * 与跨源模式（本地书借别的源看段评）的区别：
+     * - 不搜索远程书、不拉远程目录、不做章节名匹配，直接用本书自己的 ID；
+     * - 摘要有内存缓存但带 [SELF_SUMMARY_TTL_MS] 有效期，每次打开章节都会重新取数，
+     *   所以发完段评回到本章即可看到新数字，不需要手动「刷新章节」；
+     * - 适配器返回站点原始段号口径（番茄：para_index，0 基、不含章节标题），
+     *   这里统一换算成 [injectByPosition] 需要的「正文非空行序（1 基）」。
+     */
+    private suspend fun injectSelf(
+        book: Book,
+        chapter: BookChapter,
+        content: String,
+        source: BookSource,
+        adapter: ParagraphAdapter
+    ): String {
+        val bookId = adapter.extractBookId(book.bookUrl, chapter.url)
+        val chapterId = adapter.extractChapterId(chapter.url)
+        if (bookId.isNullOrBlank() || chapterId.isNullOrBlank()) {
+            AppLog.put("段评(本书源): 无法提取书籍/章节ID（bookId=$bookId chapterId=$chapterId）")
+            return content
+        }
+        val cacheKey = "${source.bookSourceUrl}|${chapter.url}"
+        val now = System.currentTimeMillis()
+        val cached = synchronized(selfSummaryCache) { selfSummaryCache[cacheKey] }
+        val summary = if (cached != null && cached.result.counts.isNotEmpty()
+            && now - cached.at < SELF_SUMMARY_TTL_MS
+        ) {
+            cached.result
+        } else {
+            adapter.fetchSummaryCounts(source, bookId, chapterId, chapter.url).also {
+                synchronized(selfSummaryCache) {
+                    selfSummaryCache[cacheKey] = CachedSummary(it, System.currentTimeMillis())
+                }
+            }
+        }
+        if (summary.counts.isEmpty()) {
+            AppLog.putReaderDebug("段评(本书源): 章节[${chapter.title}]暂无段评")
+            return content
+        }
+        val lines = content.replace("\r\n", "\n").split("\n")
+        val nonEmpty = lines.indices.filter { lines[it].isNotBlank() }
+        val offset =
+            if (nonEmpty.isNotEmpty() && TITLE_LINE_REGEX.containsMatchIn(lines[nonEmpty[0]].trim())) 1 else 0
+        val counts = HashMap<Int, Int>()
+        val apiPids = HashMap<Int, Int>()
+        val paragraphs = HashMap<Int, String>()
+        nonEmpty.forEachIndexed { k, lineIndex ->
+            val para = k - offset
+            if (para < 0) return@forEachIndexed
+            paragraphs[para] = lines[lineIndex].trim()
+            val count = summary.counts[para] ?: 0
+            if (count > 0) {
+                counts[k + 1] = count
+                apiPids[k + 1] = para
+            }
+        }
+        if (counts.isEmpty()) {
+            AppLog.putReaderDebug("段评(本书源): 章节[${chapter.title}]摘要段号与正文对不上")
+            return content
+        }
+        adapter.setChapterParagraphs(chapter.url, paragraphs)
+        val injected =
+            injectByPosition(content, source, adapter, bookId, chapterId, chapter.url, counts, apiPids)
+        if (injected != content) {
+            AppLog.putReaderDebug("段评(本书源): 章节[${chapter.title}] 已注入 ${counts.size} 个段评气泡")
+        }
+        return injected
+    }
+
+    // ==================== 番茄段评适配器 ====================
+
+    /**
+     * 番茄小说（api5-normal-sinfonlinec.fqnovel.com）段评适配器。
+     *
+     * 识别方式：按 [BookSource.bookSourceUrl] 的域名特征匹配（与 ShenmoAdapter / QidianFullAdapter
+     * 的写法一致）。**不要**用「扫 ruleContent 里有没有 ugc/idea/list/v1」来判定 —— 本套书源把接口
+     * 调用封装在 jsLib 的 fqIdeaReq 里，ruleContent 只有一句 `@js: fqContentDp(...)`，扫不到接口串。
+     * 「当前书源本身就是段评源」的真正判据在 [injectIfNeeded] 里：段评源 URL == 本书的 origin。
+     */
+    private object FanqieAdapter : ParagraphAdapter {
+
+        private const val IDEA_LIST_API =
+            "https://api5-normal-sinfonlinec.fqnovel.com/reading/ugc/idea/list/v1/"
+
+        override fun match(source: BookSource): Boolean {
+            val url = source.bookSourceUrl
+            return url.contains("fqnovel.com", true) ||
+                url.contains("fanqie", true) ||
+                source.bookSourceName.contains("番茄")
+        }
+
+        /** 支持「本书源自身即段评源」 */
+        override val selfSource: Boolean get() = true
+
+        override fun extractBookId(bookUrl: String, chapterUrl: String): String? {
+            val book = fanqiePlain(bookUrl)
+            val chapter = fanqiePlain(chapterUrl)
+            return pickId(book, "book_id") ?: pickId(book, "bookId")
+            ?: pickId(chapter, "book_id") ?: pickId(chapter, "bookId")
+        }
+
+        override fun extractChapterId(chapterUrl: String): String? {
+            val plain = fanqiePlain(chapterUrl)
+            return pickId(plain, "item_ids") ?: pickId(plain, "item_id") ?: pickId(plain, "itemId")
+        }
+
+        override suspend fun fetchSummaryCounts(
+            source: BookSource,
+            bookId: String,
+            chapterId: String,
+            chapterUrl: String?
+        ): SummaryResult {
+            val custom = source.getReviewRule()?.summaryUrl?.takeIf { it.isNotBlank() }
+            val body = if (custom == null) {
+                // 番茄的段评概览接口是免签的普通 GET（书源侧 fqIdeaReq 同样没有签名头），
+                // 直接请求即可；带签名的那几个接口（正文/搜索/目录）走书源 JS，不在这里重复实现。
+                fetchBody(
+                    source,
+                    "$IDEA_LIST_API?book_id=$bookId&item_id=$chapterId" +
+                        "&item_version=1&query_type=1&sort=1&aid=1967"
+                )
+            } else {
+                val rule = custom.trim()
+                if (rule.startsWith("@js:", true)) {
+                    // 源驱动口子：脚本在书源作用域执行（jsLib 可用）。
+                    // 注意 jsLib 里的函数拿不到规则作用域的 java/source，需要桥就用参数传进去。
+                    val code = rule.substring(4)
+                        .replace("{bookId}", bookId)
+                        .replace("{chapterId}", chapterId)
+                    evalSourceJs(source, code)
+                } else {
+                    fetchBody(
+                        source,
+                        rule.replace("{bookId}", bookId).replace("{chapterId}", chapterId)
+                    )
+                }
+            } ?: return SummaryResult()
+            return parseFanqieIdea(body)
+        }
+
+        override fun buildPclick(
+            source: BookSource,
+            bookId: String,
+            chapterId: String,
+            pid: Int,
+            chapterUrl: String?
+        ): String {
+            // pid = para_index（0 基、不含章节标题），与书源侧 fqDpInject / H5 面板口径一致，
+            // 点击后走书源 jsLib 的 fqDpClick（H5 面板，含登录态、点赞/回复/删除/发段评）。
+            // cB64 = 被点段落原文，供 H5 头部引用展示；base64 必须 NO_WRAP，
+            // 且 pclick 里禁止出现双引号/反斜杠/大于号（会截断 <img src> 属性），字符串一律单引号。
+            val text = paragraphText(chapterUrl, pid)
+            val cB64 = if (text.isBlank()) "" else
+                Base64.encodeToString(text.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+            return "fqDpClick.call(this, java, '$bookId', '$chapterId', '$pid', '', '$cB64')"
+        }
+
+        // ---- 段落原文缓存：气泡点击时 H5 面板显示「你评的是这一段」 ----
+
+        private const val PARAGRAPH_CACHE_MAX = 8
+        private val paragraphCache = LinkedHashMap<String, Map<Int, String>>()
+
+        override fun setChapterParagraphs(chapterUrl: String?, paragraphs: Map<Int, String>) {
+            val key = chapterUrl ?: return
+            synchronized(paragraphCache) {
+                paragraphCache[key] = paragraphs
+                while (paragraphCache.size > PARAGRAPH_CACHE_MAX) {
+                    val first = paragraphCache.keys.firstOrNull() ?: break
+                    paragraphCache.remove(first)
+                }
+            }
+        }
+
+        override fun paragraphText(chapterUrl: String?, pid: Int): String {
+            val key = chapterUrl ?: return ""
+            return synchronized(paragraphCache) { paragraphCache[key]?.get(pid) }.orEmpty()
+        }
+    }
+
+    /**
+     * 番茄书源把 URL 存成 legado 的「标记」形式：`data:;base64,<b64>,{"type":"1"}`，或纯十六进制串。
+     * 必须先还原出明文（如 `item_ids=123456&book_id=789`）再正则取 ID ——
+     * 直接在标记串上取 ID 永远取不到，是接这套源最常见的坑。
+     */
+    private fun fanqiePlain(url: String): String {
+        if (url.isBlank()) return ""
+        Regex(""";base64,([A-Za-z0-9+/=]+)""").find(url)?.groupValues?.get(1)?.let { b64 ->
+            runCatching { String(Base64.decode(b64, Base64.DEFAULT), Charsets.UTF_8) }
+                .getOrNull()?.takeIf { it.isNotBlank() }?.let { return it }
+        }
+        val hex = url.trim()
+        if (hex.isNotEmpty() && hex.length % 2 == 0 &&
+            hex.all { it.isDigit() || it in 'a'..'f' || it in 'A'..'F' }
+        ) {
+            runCatching {
+                String(
+                    ByteArray(hex.length / 2) { hex.substring(it * 2, it * 2 + 2).toInt(16).toByte() },
+                    Charsets.UTF_8
+                )
+            }.getOrNull()?.takeIf { it.isNotBlank() }?.let { return it }
+        }
+        return url
+    }
+
+    /**
+     * 在书源作用域里执行 JS：java 桥 = [AnalyzeRule]（有 ajax），原型链 = 书源 jsLib。
+     * 仅给 ruleReview.summaryUrl 这类「源驱动」脚本使用；番茄默认路径直接请求，不经过这里。
+     */
+    private suspend fun evalSourceJs(source: BookSource, code: String): String? = runCatching {
+        val rule = AnalyzeRule(null, source)
+        rule.setCoroutineContext(currentCoroutineContext())
+        rule.setBaseUrl(source.bookSourceUrl)
+        rule.evalJS(code, null)?.toString()
+    }.onFailure {
+        AppLog.put("段评(番茄): 执行书源摘要脚本失败 ${it.localizedMessage}", it)
+    }.getOrNull()
+
+    /**
+     * 解析番茄段评摘要：`data.idea_data` 是「段号 -> 对象」的 map，取其中 idea_count。
+     * 返回的 key 是站点原始段号（番茄：para_index，0 基、不含章节标题）。
+     */
+    private fun parseFanqieIdea(body: String): SummaryResult = runCatching {
+        val json = INITIAL_GSON.fromJson(body, JsonObject::class.java)
+            ?: return@runCatching SummaryResult()
+        val ideaObject = json.getAsJsonObject("data")?.getAsJsonObject("idea_data")
+            ?: return@runCatching SummaryResult()
+        val counts = HashMap<Int, Int>()
+        ideaObject.entrySet().forEach { entry ->
+            val para = entry.key.toIntOrNull() ?: return@forEach
+            val count = runCatching {
+                entry.value.asJsonObject.get("idea_count")?.asInt
+            }.getOrNull() ?: 0
+            if (para >= 0 && count > 0) counts[para] = count
+        }
+        SummaryResult(counts, HashMap(), emptyList())
+    }.onFailure {
+        AppLog.put("段评(番茄): 解析摘要失败 ${it.localizedMessage}")
+    }.getOrDefault(SummaryResult())
+
     private interface ParagraphAdapter {
         fun match(source: BookSource): Boolean
+
+        /** 是否支持「本书源自身即段评源」模式（联网书看自己书源的段评，跳过跨源搜索）。默认不支持。 */
+        val selfSource: Boolean get() = false
+
         fun extractBookId(bookUrl: String, chapterUrl: String): String?
         fun extractChapterId(chapterUrl: String): String?
         suspend fun fetchSummaryCounts(source: BookSource, bookId: String, chapterId: String, chapterUrl: String? = null): SummaryResult
         fun buildPclick(source: BookSource, bookId: String, chapterId: String, pid: Int, chapterUrl: String? = null): String
+
+        /** 注入前把「本章正文段落」（key = 站点段号）告知适配器，供气泡点击时引用原文展示。默认忽略。 */
+        fun setChapterParagraphs(chapterUrl: String?, paragraphs: Map<Int, String>) {}
+
+        /** 取被点段落原文（站点段号口径）。缺省返回空串。 */
+        fun paragraphText(chapterUrl: String?, pid: Int): String = ""
     }
 
     private object GenericAdapter : ParagraphAdapter {
