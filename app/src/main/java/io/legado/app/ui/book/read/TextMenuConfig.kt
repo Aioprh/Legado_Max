@@ -52,6 +52,7 @@ object TextMenuConfig {
         MenuItemInfo(R.id.menu_replace, R.string.replace),
         MenuItemInfo(R.id.menu_copy, android.R.string.copy),
         MenuItemInfo(R.id.menu_bookmark, R.string.bookmark),
+        MenuItemInfo(R.id.menu_post_review, R.string.post_review),
         MenuItemInfo(R.id.menu_aloud, R.string.read_aloud),
         MenuItemInfo(R.id.menu_dict, R.string.dict),
         MenuItemInfo(R.id.menu_share_image, R.string.share_note_menu),

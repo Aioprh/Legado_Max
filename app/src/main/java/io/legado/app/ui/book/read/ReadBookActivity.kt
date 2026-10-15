@@ -96,6 +96,7 @@ import io.legado.app.ui.book.read.page.ReadView
 import io.legado.app.ui.book.read.page.delegate.ScrollPageDelegate
 import io.legado.app.ui.book.read.page.entities.PageDirection
 import io.legado.app.ui.book.read.page.entities.TextPage
+import io.legado.app.ui.book.read.page.entities.column.ImageColumn
 import io.legado.app.ui.book.read.page.provider.ChapterProvider
 import io.legado.app.ui.book.read.page.provider.LayoutProgressListener
 import io.legado.app.ui.book.searchContent.SearchContentActivity
@@ -962,6 +963,11 @@ class ReadBookActivity : BaseReadBookActivity(),
                 return true
             }
 
+            R.id.menu_post_review -> {
+                postParagraphReview()
+                return true
+            }
+
             R.id.menu_replace -> {
                 val scopes = arrayListOf<String>()
                 ReadBook.book?.name?.let {
@@ -1013,6 +1019,93 @@ class ReadBookActivity : BaseReadBookActivity(),
             }
         }
         return false
+    }
+
+    /**
+     * 发段评：优先复用选中段落由书源注入的段评气泡 click 脚本（含无评论段落的加号气泡）；
+     * 该段没有气泡时回退到书源 ruleReview.postUrl 脚本；两者都没有则提示不支持。
+     */
+    private fun postParagraphReview() {
+        val curPage = binding.readView.curPage
+        val startPos = curPage.selectStartPos
+        val paragraphNum = curPage.relativePage(startPos.relativePagePos.coerceIn(0, 2))
+            .getLine(startPos.lineIndex)
+            .paragraphNum
+        // 1. 复用书源注入的段评气泡（数字气泡=有段评、加号气泡=无段评，click 均为书源自身入口）
+        val bubble = findParagraphBubbleColumn(paragraphNum)
+        if (bubble != null) {
+            val click = bubble.click ?: ParagraphBubbleRenderer.clickScript(bubble.src)
+            if (!click.isNullOrBlank()) {
+                clickImg(click, bubble.src)
+                return
+            }
+        }
+        // 2. 回退：书源 ruleReview.postUrl 脚本
+        val source = ReadBook.bookSource
+        val postJs = source?.getReviewRule()?.postUrl?.takeIf { it.isNotBlank() }
+        if (source != null && postJs != null) {
+            val js = postJs
+                .let { if (it.startsWith("@js:")) it.substring(4) else it }
+                .let { if (it.startsWith("<js>")) it.substring(4, it.lastIndexOf("<")) else it }
+            Coroutine.async(lifecycleScope, IO) {
+                val book = ReadBook.book ?: return@async
+                val chapter = appDb.bookChapterDao.getChapter(book.bookUrl, ReadBook.durChapterIndex)
+                    ?: throw NoStackTraceException("no find chapter")
+                val java = SourceLoginJsExtensions(this@ReadBookActivity, source, BookType.text)
+                val paragraphText = collectParagraphText(paragraphNum)
+                val result = if (paragraphNum > 0) paragraphNum - 1 else 0
+                runScriptWithContext {
+                    source.evalJS(js) {
+                        put("java", java)
+                        put("book", book)
+                        put("chapter", chapter)
+                        put("result", result)
+                        put("src", paragraphText)
+                    }
+                }
+            }.onError {
+                AppLog.put("执行发段评脚本出错\n${it.localizedMessage}", it, true)
+            }
+            return
+        }
+        // 3. 无可用入口
+        toastOnUi(R.string.post_review_unsupported)
+    }
+
+    /**
+     * 在选中段落所在页及后续页中查找该段落的段评气泡列
+     */
+    private fun findParagraphBubbleColumn(paragraphNum: Int): ImageColumn? {
+        if (paragraphNum <= 0) return null
+        val curPage = binding.readView.curPage
+        for (pagePos in 0..2) {
+            curPage.relativePage(pagePos).lines.forEach { line ->
+                if (line.paragraphNum != paragraphNum) return@forEach
+                line.columns.forEach { column ->
+                    if (column is ImageColumn && ParagraphBubbleRenderer.isBubbleSrc(column.src)) {
+                        return column
+                    }
+                }
+            }
+        }
+        return null
+    }
+
+    /**
+     * 拼接选中段落的正文文本（用于回退脚本的 src）
+     */
+    private fun collectParagraphText(paragraphNum: Int): String {
+        if (paragraphNum <= 0) return selectedText
+        val curPage = binding.readView.curPage
+        val builder = StringBuilder()
+        for (pagePos in 0..2) {
+            curPage.relativePage(pagePos).lines.forEach { line ->
+                if (line.paragraphNum == paragraphNum) {
+                    builder.append(line.text)
+                }
+            }
+        }
+        return builder.toString().ifBlank { selectedText }
     }
 
     /**

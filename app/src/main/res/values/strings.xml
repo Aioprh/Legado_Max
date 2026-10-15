@@ -347,6 +347,8 @@
     <string name="group_zg">Awaiting</string>
     <string name="group_yf">Awaiting more</string>
     <string name="bookmark">Bookmarks</string>
+    <string name="post_review">Post comment</string>
+    <string name="post_review_unsupported">This book source has no post-comment entry</string>
     <string name="bookmark_add">Add to Bookmarks</string>
     <string name="action_del">Delete</string>
     <string name="load_over_time">Loading timeout</string>
