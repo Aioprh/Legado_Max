@@ -8,8 +8,9 @@ package io.legado.app.ui.widget.dialog
  * 兼容起点系（UserName/UserHeadIcon/ShowTag/IpLocation/ReviewCount…）等不同站点字段命名。
  *
  * URL 模板占位符：
- * - {{page}} / {{pageSize}}   段评列表分页（commentsUrl）
- * - {{reviewId}} / {{rootId}} 某条评论的 id / 根评论 id（repliesUrl）
+ * - [page] / [pageSize]          段评列表分页（commentsUrl）
+ * - [reviewId] / [rootId]        某条评论的 id / 根评论 id（repliesUrl）
+ * - [content] / [contentRaw]     发送评论内容：URL 编码 / 原始文本（postUrl）
  */
 data class ParagraphCommentConfig(
     var title: String = "",
@@ -26,6 +27,11 @@ data class ParagraphCommentConfig(
     var replyListPath: String = "",
     // 语音列表（可选，起点系需 type=audio 接口获取音频地址；缺省从 commentsUrl 推导 type=text -> type=audio）
     var audioUrl: String = "",
+    // 发送段评（可选）：书源在配置中提供 postUrl 后，弹窗底部才显示评论输入栏，
+    // 未配置则自动隐藏。URL 模板支持 [content]（URL 编码）/ [contentRaw]（原始文本）占位符，
+    // 可用 AnalyzeUrl 选项语法声明 POST 方法/请求体，如
+    // "https://host/post,{\"method\":\"POST\",\"body\":\"content=[content]\"}"
+    var postUrl: String = "",
     // 评论字段路径
     var fields: FieldConfig = FieldConfig(),
     // 回复字段路径

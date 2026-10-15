@@ -2481,6 +2481,11 @@ Night: %5$s / %6$s / %7$s / %8$s</string>
     <string name="paragraph_comment_image">Image comment</string>
     <string name="paragraph_comment_realtime">Realtime</string>
     <string name="paragraph_comment_newest">Newest</string>
+    <string name="paragraph_comment_input_hint">Write a comment…</string>
+    <string name="paragraph_comment_input_empty">Comment content cannot be empty</string>
+    <string name="paragraph_comment_send">Send</string>
+    <string name="paragraph_comment_send_success">Sent successfully</string>
+    <string name="paragraph_comment_send_failed">Send failed</string>
     <string name="paragraph_comment_sort">评论排序</string>
     <string name="paragraph_comment_sort_newest">最新评论</string>
     <string name="paragraph_comment_sort_realtime">实时评论</string>

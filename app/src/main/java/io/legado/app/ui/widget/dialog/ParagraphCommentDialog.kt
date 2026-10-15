@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
@@ -126,6 +127,8 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             )
         }
         dialog?.window?.setDimAmount(0.18f)
+        // 发送评论输入栏弹出键盘时窗口跟随缩放，避免遮挡输入框
+        dialog?.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         // 弹窗显示期间启用 DiffUtil 增量更新，分页/排序重排时保持滚动位置；
         // 否则 setItems(list, callback) 会退化为 notifyDataSetChanged 全量刷新导致列表跳回顶部
         adapter.upResumed(true)
@@ -211,6 +214,13 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         }
         updateFilterTabs()
         updateSortTabs()
+        // 发送评论输入栏：仅当书源在配置中主动提供 postUrl 时显示，未配置则自动隐藏
+        if (config.postUrl.isNullOrBlank()) {
+            binding.llPost.gone()
+        } else {
+            binding.llPost.visible()
+            binding.tvSend.setOnClickListener { sendComment() }
+        }
         if (config.commentsUrl.isNullOrBlank()) {
             AppLog.put("段评弹窗 commentsUrl 为空，无法加载", NoStackTraceException("commentsUrl 为空"))
             showMsg(getString(R.string.paragraph_comment_load_failed))
@@ -493,6 +503,45 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             // 起点直连回复接口需要按"内容+创建时间"定位网页端 reviewId，随 URL 传参
             .replace("[content]", android.net.Uri.encode(item.content))
             .replace("[time]", item.time.toString())
+    }
+
+    // ---------- 发送评论 ----------
+
+    private var posting = false
+
+    /** 点击发送：校验内容 -> 提交 postUrl -> 成功后清空输入并刷新列表 */
+    private fun sendComment() {
+        if (posting) return
+        val content = binding.etComment.text?.toString()?.trim().orEmpty()
+        if (content.isBlank()) {
+            Toast.makeText(requireContext(), getString(R.string.paragraph_comment_input_empty), Toast.LENGTH_SHORT).show()
+            return
+        }
+        val url = buildPostUrl(content)
+        if (url.isBlank()) return
+        posting = true
+        binding.tvSend.isEnabled = false
+        execute {
+            val body = fetchBody(url)
+            withContext(Dispatchers.Main) {
+                posting = false
+                binding.tvSend.isEnabled = true
+                if (body == null) {
+                    Toast.makeText(requireContext(), getString(R.string.paragraph_comment_send_failed), Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(requireContext(), getString(R.string.paragraph_comment_send_success), Toast.LENGTH_SHORT).show()
+                    binding.etComment.setText("")
+                    loadPage(1)
+                }
+            }
+        }
+    }
+
+    /** 构造发送 URL：替换 [contentRaw]（原始文本，JSON body 用）与 [content]（URL 编码，表单/Query 用）占位符 */
+    private fun buildPostUrl(content: String): String {
+        return config.postUrl
+            .replace("[contentRaw]", content)
+            .replace("[content]", android.net.Uri.encode(content))
     }
 
     // ---------- 语音播放 ----------
