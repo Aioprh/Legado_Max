@@ -337,12 +337,12 @@ class TextChapterLayout(
                                 if (width.endsWith("%")) {
                                     width.dropLast(1).toIntOrNull()?.let { percentage ->
                                         val imgWidth = visibleWidth * percentage / 100
-                                        val (sizeHeight, sizeWidth) = imgSize
+                                        val (sizeWidth, sizeHeight) = imgSize
                                         imgSize = Size(imgWidth, sizeHeight * imgWidth / sizeWidth)
                                     }
                                 } else {
                                     width.toIntOrNull()?.let { width ->
-                                        val (sizeHeight, sizeWidth) = imgSize
+                                        val (sizeWidth, sizeHeight) = imgSize
                                         imgSize = Size(width, sizeHeight * width / sizeWidth)
                                     }
                                 }
@@ -573,12 +573,12 @@ class TextChapterLayout(
                             if (width.endsWith("%")) {
                                 width.dropLast(1).toIntOrNull()?.let { percentage ->
                                     val imgWidth = visibleWidth * percentage / 100
-                                    val (sizeHeight, sizeWidth) = imgSize
+                                    val (sizeWidth, sizeHeight) = imgSize
                                     imgSize = Size(imgWidth, sizeHeight * imgWidth / sizeWidth)
                                 }
                             } else {
                                 width.toIntOrNull()?.let { width ->
-                                    val (sizeHeight, sizeWidth) = imgSize
+                                    val (sizeWidth, sizeHeight) = imgSize
                                     imgSize = Size(width, sizeHeight * width / sizeWidth)
                                 }
                             }
@@ -729,12 +729,12 @@ class TextChapterLayout(
                                 if (width.endsWith("%")) {
                                     width.dropLast(1).toIntOrNull()?.let { percentage ->
                                         val imgWidth = visibleWidth * percentage / 100
-                                        val (sizeHeight, sizeWidth) = imgSize
+                                        val (sizeWidth, sizeHeight) = imgSize
                                         imgSize = Size(imgWidth, sizeHeight * imgWidth / sizeWidth)
                                     }
                                 } else {
                                     width.toIntOrNull()?.let { width ->
-                                        val (sizeHeight, sizeWidth) = imgSize
+                                        val (sizeWidth, sizeHeight) = imgSize
                                         imgSize = Size(width, sizeHeight * width / sizeWidth)
                                     }
                                 }
@@ -1045,12 +1045,12 @@ class TextChapterLayout(
                             if (width.endsWith("%")) {
                                 width.dropLast(1).toIntOrNull()?.let { percentage ->
                                     val imgWidth = visibleWidth * percentage / 100
-                                    val (sizeHeight, sizeWidth) = imgSize
+                                    val (sizeWidth, sizeHeight) = imgSize
                                     imgSize = Size(imgWidth, sizeHeight * imgWidth / sizeWidth)
                                 }
                             } else {
                                 width.toIntOrNull()?.let { width ->
-                                    val (sizeHeight, sizeWidth) = imgSize
+                                    val (sizeWidth, sizeHeight) = imgSize
                                     imgSize = Size(width, sizeHeight * width / sizeWidth)
                                 }
                             }
