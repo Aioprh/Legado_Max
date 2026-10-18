@@ -429,6 +429,11 @@ class BookSourceEditActivity :
             setText(R.string.source_tab_content)
         })
         binding.recyclerView.setEdgeEffectColor(primaryColor)
+        // item 高度固定由 maxLines 决定，尺寸不随内容变化，跳过多余的 requestLayout
+        binding.recyclerView.setHasFixedSize(true)
+        // 缓存足够多的 item，减少上下滚动与 tab 切换时的重复 inflate/bind
+        binding.recyclerView.setItemViewCacheSize(15)
+        binding.recyclerView.recycledViewPool.setMaxRecycledViews(0, 15)
         if (adapter.editEntityMaxLine < 999) {
             binding.recyclerView.layoutManager = NoChildScrollLinearLayoutManager(this)
         }

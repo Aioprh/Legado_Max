@@ -30,6 +30,13 @@ class CodeView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
     private var highlightWhileTextChanging = true
     private var hasErrors = false
     private var mRemoveErrorsWhenTextChanged = true
+
+    /**
+     * 列表 bind 时置为 true，跳过 setText 触发的语法高亮（含延迟的全量正则扫描）。
+     * 否则每个 item 都会在高亮延迟后各做一次高亮，多个 item 集中高亮会占用主线程。
+     */
+    var skipNextHighlight = false
+
     private val mUpdateHandler = Handler(Looper.getMainLooper())
     private var mAutoCompleteTokenizer: Tokenizer? = null
     private val displayDensity = resources.displayMetrics.density
@@ -61,6 +68,7 @@ class CodeView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
             before: Int,
             count: Int
         ) {
+            if (skipNextHighlight) return
             if (!modified) return
             if (highlightWhileTextChanging) {
                 if (mSyntaxPatternMap.isNotEmpty()) {
@@ -72,6 +80,7 @@ class CodeView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
         }
 
         override fun afterTextChanged(editable: Editable) {
+            if (skipNextHighlight) return
             if (!highlightWhileTextChanging) {
                 if (!modified) return
                 cancelHighlighterRender()

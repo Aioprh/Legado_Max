@@ -19,6 +19,16 @@ class BookSourceEditAdapter : RecyclerView.Adapter<BookSourceEditAdapter.MyViewH
 
     val editEntityMaxLine = AppConfig.sourceEditMaxLine
 
+    /**
+     * 列表内实际渲染的最大行数。
+     * 配置为"不限制"时收敛到 [RENDER_MAX_LINES]：超长字段（可含几十万字符）在
+     * wrap_content + 不限行数下，TextView 会对全文做一次 StaticLayout 排版，
+     * 单个 item 高度可达 63 万 px，阻塞主线程数秒并触发 ANR。
+     * 全文查看/编辑通过已有的"全屏编辑"入口完成。
+     */
+    private val renderMaxLines =
+        if (editEntityMaxLine >= UNLIMITED_MAX_LINE) RENDER_MAX_LINES else editEntityMaxLine
+
     var editEntities: ArrayList<EditEntity> = ArrayList()
         @SuppressLint("NotifyDataSetChanged")
         set(value) {
@@ -48,7 +58,7 @@ class BookSourceEditAdapter : RecyclerView.Adapter<BookSourceEditAdapter.MyViewH
 
         fun bind(editEntity: EditEntity) = binding.run {
             editText.setTag(R.id.tag, editEntity.key)
-            editText.maxLines = editEntityMaxLine
+            editText.maxLines = renderMaxLines
             if (editText.getTag(R.id.tag1) == null) {
                 val listener = object : View.OnAttachStateChangeListener {
                     override fun onViewAttachedToWindow(v: View) {
@@ -70,7 +80,10 @@ class BookSourceEditAdapter : RecyclerView.Adapter<BookSourceEditAdapter.MyViewH
                     editText.removeTextChangedListener(it)
                 }
             }
+            editText.cancelHighlighterRender()
+            editText.skipNextHighlight = true
             editText.setText(editEntity.value)
+            editText.skipNextHighlight = false
             textInputLayout.hint = editEntity.hint
             val textWatcher = object : TextWatcher {
                 override fun beforeTextChanged(
@@ -94,6 +107,14 @@ class BookSourceEditAdapter : RecyclerView.Adapter<BookSourceEditAdapter.MyViewH
             editText.setTag(R.id.tag2, textWatcher)
             editText.clearFocus()
         }
+    }
+
+    companion object {
+        /** editEntityMaxLine 达到该值即视为"不限行数" */
+        private const val UNLIMITED_MAX_LINE = 999
+
+        /** "不限行数"时列表内实际渲染的最大行数，避免超长文本全量排版 */
+        private const val RENDER_MAX_LINES = 30
     }
 
 }
