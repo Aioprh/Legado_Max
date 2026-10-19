@@ -33,6 +33,31 @@ object ParagraphBubbleRenderer {
         return src.startsWith(SCHEME_PREFIX)
     }
 
+    /** 段评入口图片在 img option 的 type 字段中声明的标识（书源自带的 data:svg 卡片/气泡） */
+    val PARAGRAPH_ENTRY_TYPES = setOf(
+        "qd", "fqpl", "fanqie", "cmt", "comment", "comments",
+        "review", "paragraph", "paragraphcomment"
+    )
+
+    private val entryTypeRegex =
+        Regex("\"type\"\\s*:\\s*\"([A-Za-z0-9_]+)\"", RegexOption.IGNORE_CASE)
+
+    /**
+     * 判断图片是否为段评入口：软件气泡（bubble://paragraph），
+     * 或书源自带的 data:svg + type/click 卡片/气泡（如番茄「本章讨论」卡片）。
+     *
+     * 段评入口被点击时应始终执行段评脚本，不受「点击图片方式」设置拦截。
+     */
+    fun isParagraphEntry(src: String, click: String?): Boolean {
+        if (isBubbleSrc(src)) return true
+        if (click.isNullOrBlank()) return false
+        val type = entryTypeRegex.find(src)?.groupValues?.getOrNull(1)?.lowercase()
+        if (type != null && type in PARAGRAPH_ENTRY_TYPES) return true
+        val c = click.lowercase()
+        return c.contains("showcmt(") || c.contains("showcomment(") ||
+            c.contains("showreview(") || c.contains("paragraph")
+    }
+
     /** 根据缩放比例计算气泡渲染尺寸 */
     fun getSize(src: String): Size {
         val scale = BubblePackageManager.currentEntry().config.sizeScale

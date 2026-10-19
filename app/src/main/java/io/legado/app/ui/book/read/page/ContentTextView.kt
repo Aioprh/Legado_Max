@@ -306,9 +306,9 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
                     if (ParagraphBubbleRenderer.isBubbleSrc(column.src) && click.isNullOrBlank()) {
                         AppLog.put("点击段评气泡但 click 为空: src=${column.src.take(100)}")
                     }
-                    if (ParagraphBubbleRenderer.isBubbleSrc(column.src) && !click.isNullOrBlank()) {
-                        // 段评气泡：始终执行段评点击脚本，不依赖“点击图片方式”设置，
-                        // 避免被“预览图片/关闭”等设置拦截导致无法点击
+                    if (ParagraphBubbleRenderer.isParagraphEntry(column.src, click) && !click.isNullOrBlank()) {
+                        // 段评入口（软件气泡 / 书源自带的 data:svg 卡片）：始终执行段评点击脚本，
+                        // 不依赖“点击图片方式”设置，避免被“预览图片/关闭”等设置拦截导致无法点击
                         callBack.clickImg(click, column.src)
                         handled = true
                     } else when (AppConfig.clickImgWay) {

@@ -280,7 +280,7 @@ class TextChapterLayout(
                     matcher.group(1)?.let { src ->
                         val bubbleResult = tryParseForcedBubbleSrcWithClick(src)
                         srcList.add(bubbleResult.renderSrc)
-                        clickList.add(bubbleResult.click)
+                        clickList.add(bubbleResult.click ?: extractImageClick(src))
                         matcher.appendReplacement(sb, srcReplaceStr)
                     }
                 }
@@ -672,7 +672,7 @@ class TextChapterLayout(
                     matcher.group(1)?.let { src ->
                         val bubbleResult = tryParseForcedBubbleSrcWithClick(src)
                         srcList.add(bubbleResult.renderSrc)
-                        clickList.add(bubbleResult.click)
+                        clickList.add(bubbleResult.click ?: extractImageClick(src))
                         matcher.appendReplacement(sb, srcReplaceStr)
                     }
                 }
@@ -2041,6 +2041,22 @@ class TextChapterLayout(
     }
 
     /**
+     * 从图片 option 中提取点击脚本，供「图片样式=文字嵌入」分支使用。
+     *
+     * 该分支只把 [tryParseForcedBubbleSrcWithClick] 的 click 当结果，
+     * 对未开启强制气泡的站点自带段评图（如番茄 data:svg 卡片/气泡）会拿到 null，
+     * 导致图片可点却点了没反应。这里按正文默认分支同样的方式解析 option 中的 click。
+     */
+    private fun extractImageClick(src: String): String? {
+        val urlMatcher = paramPattern.matcher(src)
+        if (!urlMatcher.find()) return null
+        val option = GSON.fromJsonObject<Map<String, String>>(src.substring(urlMatcher.end()))
+            .getOrNull() ?: return null
+        return option.valueIgnoreCase("pclick")?.takeIf { it.isNotBlank() }
+            ?: option.valueIgnoreCase("click")?.takeIf { it.isNotBlank() }
+    }
+
+    /**
      * 尝试将非气泡图片源转换为 bubble://paragraph URL，同时保留原始 click 脚本。
      *
      * 当 [AppConfig.forceSoftwareParagraphBubble] 开启时，检测图片源是否为段评入口
@@ -2435,17 +2451,7 @@ class TextChapterLayout(
             RegexOption.IGNORE_CASE
         )
         const val PARAGRAPH_BUBBLE_PREFIX = "dp:"
-        val FORCED_BUBBLE_TYPES = setOf(
-            "qd",
-            "fqpl",
-            "fanqie",
-            "cmt",
-            "comment",
-            "comments",
-            "review",
-            "paragraph",
-            "paragraphcomment",
-        )
+        val FORCED_BUBBLE_TYPES = ParagraphBubbleRenderer.PARAGRAPH_ENTRY_TYPES
     }
 
 }
