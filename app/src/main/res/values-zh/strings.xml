@@ -2507,4 +2507,17 @@
     <string name="storage_cache_webview_name">WebView 缓存</string>
     <string name="storage_clear_failed">清理失败</string>
     <string name="storage_load_failed">加载失败</string>
+    <!-- 我的页面 -->
+    <string name="my_header_title">我的阅读</string>
+    <string name="my_header_subtitle">书籍、书源与阅读记录都保存在本机</string>
+    <string name="my_stat_books">藏书</string>
+    <string name="my_stat_read_time">阅读时长</string>
+    <string name="my_stat_read_days">阅读天数</string>
+    <string name="my_section_content">阅读与内容</string>
+    <string name="my_section_tools">工具与数据</string>
+    <string name="my_section_appearance">外观与设置</string>
+    <string name="my_section_about">关于</string>
+    <string name="my_bookmark_summary">共 %1$d 个书签</string>
+    <string name="my_version_summary">版本 %1$s</string>
+    <string name="my_footer">阅读 Max · 本地优先 · 无账号 · 无云端</string>
 </resources>

@@ -12,11 +12,10 @@
         app:attachToActivity="false"
         app:title="@string/my" />
 
-    <LinearLayout
-        android:id="@+id/pre_fragment"
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/compose_view"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:orientation="vertical" />
+        android:layout_weight="1" />
 
 </LinearLayout>

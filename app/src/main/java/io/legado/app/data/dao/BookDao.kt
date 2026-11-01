@@ -481,6 +481,9 @@ interface BookDao {
     @get:Query("SELECT COUNT(*) FROM books")
     val allBookCount: Int
 
+    @Query("SELECT COUNT(*) FROM books")
+    fun flowBookCount(): Flow<Int>
+
     @get:Query("select min(`order`) from books")
     val minOrder: Int
 

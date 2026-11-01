@@ -92,6 +92,12 @@ interface ReadRecordDao {
     )
     fun getCalculatedTotalReadTime(): Flow<Long>
 
+    /**
+     * 有阅读记录的天数（按 readRecordDetail.date 去重），用于「我的」页顶部信息卡。
+     */
+    @Query("SELECT COUNT(DISTINCT date) FROM readRecordDetail")
+    fun getReadDaysFlow(): Flow<Int>
+
     @Query("SELECT readTime FROM readRecord WHERE deviceId = :deviceId AND bookName = :bookName AND bookAuthor = :bookAuthor")
     fun getReadTimeFlow(deviceId: String, bookName: String, bookAuthor: String): Flow<Long?>
 

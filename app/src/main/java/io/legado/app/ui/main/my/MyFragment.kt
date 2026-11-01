@@ -1,12 +1,17 @@
 package io.legado.app.ui.main.my
 
-import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
-import androidx.core.view.updatePadding
-import androidx.preference.Preference
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.ui.unit.dp
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.legado.app.R
 import io.legado.app.base.BaseFragment
 import io.legado.app.constant.EventBus
@@ -14,40 +19,43 @@ import io.legado.app.constant.PreferKey
 import io.legado.app.databinding.FragmentMyConfigBinding
 import io.legado.app.help.config.ThemeConfig
 import io.legado.app.lib.dialogs.selector
-import io.legado.app.lib.prefs.NameListPreference
-import io.legado.app.lib.prefs.SwitchPreference
-import io.legado.app.lib.prefs.fragment.PreferenceFragment
-import io.legado.app.lib.theme.primaryColor
+import io.legado.app.service.WebService
 import io.legado.app.ui.about.AboutActivity
-import io.legado.app.ui.book.readRecord.ReadRecordActivity
-import io.legado.app.ui.book.storage.StorageManageActivity
 import io.legado.app.ui.book.bookmark.AllBookmarkActivity
+import io.legado.app.ui.book.readRecord.ReadRecordActivity
 import io.legado.app.ui.book.source.manage.BookSourceActivity
+import io.legado.app.ui.book.storage.StorageManageActivity
 import io.legado.app.ui.book.toc.rule.TxtTocRuleActivity
 import io.legado.app.ui.config.ConfigActivity
 import io.legado.app.ui.config.ConfigTag
 import io.legado.app.ui.debug.DebugToolsActivity
 import io.legado.app.ui.dict.rule.DictRuleActivity
-import io.legado.app.ui.urlRecord.UrlRecordActivity
-import io.legado.app.ui.file.FileManageActivity
 import io.legado.app.ui.download.DownloadManageActivity
+import io.legado.app.ui.file.FileManageActivity
 import io.legado.app.ui.main.MainActivity
 import io.legado.app.ui.main.MainFragmentInterface
-import io.legado.app.help.config.AppConfig
 import io.legado.app.ui.replace.ReplaceRuleActivity
-import io.legado.app.service.WebService
-import io.legado.app.utils.LogUtils
-import io.legado.app.utils.getPrefBoolean
+import io.legado.app.ui.theme.LegadoTheme
+import io.legado.app.ui.urlRecord.UrlRecordActivity
 import io.legado.app.utils.observeEvent
 import io.legado.app.utils.observeEventSticky
 import io.legado.app.utils.openUrl
 import io.legado.app.utils.putPrefBoolean
+import io.legado.app.utils.putPrefString
 import io.legado.app.utils.sendToClip
-import io.legado.app.utils.setEdgeEffectColor
 import io.legado.app.utils.showHelp
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 
+/**
+ * 「我的」页（Compose 版）。
+ *
+ * 页面主体由 [MyScreen] 渲染，本类只负责：
+ * 1. 标题栏与菜单（帮助入口）
+ * 2. 入口跳转（[MyEntry] → Activity）
+ * 3. 主题模式、Web 服务的系统副作用（写偏好、启停服务、应用日夜模式）
+ * 4. 底栏高度回调，转成 Compose 的底部内边距
+ */
 class MyFragment() : BaseFragment(R.layout.fragment_my_config), MainFragmentInterface {
 
     constructor(position: Int) : this() {
@@ -59,14 +67,49 @@ class MyFragment() : BaseFragment(R.layout.fragment_my_config), MainFragmentInte
     override val position: Int? get() = arguments?.getInt("position")
 
     private val binding by viewBinding(FragmentMyConfigBinding::bind)
+    private val viewModel by viewModels<MyViewModel>()
+    private var bottomPaddingPx by mutableIntStateOf(0)
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         setSupportToolbar(binding.titleBar.toolbar)
-        val fragmentTag = "prefFragment"
-        var preferenceFragment = childFragmentManager.findFragmentByTag(fragmentTag)
-        if (preferenceFragment == null) preferenceFragment = MyPreferenceFragment()
-        childFragmentManager.beginTransaction()
-            .replace(R.id.pre_fragment, preferenceFragment, fragmentTag).commit()
+        // 让偏好里的 Web 服务状态与服务实际状态保持一致
+        putPrefBoolean(PreferKey.webService, WebService.isRun)
+
+        binding.composeView.setViewCompositionStrategy(
+            ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed
+        )
+        binding.composeView.setContent {
+            val state by viewModel.uiState.collectAsStateWithLifecycle()
+            val density = LocalDensity.current
+            LegadoTheme {
+                MyScreen(
+                    state = state,
+                    bottomContentPadding = with(density) { bottomPaddingPx.toDp() } + 16.dp,
+                    onEntryClick = ::openEntry,
+                    onThemeModeSelected = ::applyThemeMode,
+                    onWebServiceToggle = ::setWebServiceRunning,
+                    onWebServiceAddressClick = ::showWebServiceActions
+                )
+            }
+        }
+
+        viewModel.refreshPreferences()
+        viewModel.observeStats()
+        updateMainBottomPadding((activity as? MainActivity)?.mainContentBottomPadding() ?: 0)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.refreshPreferences()
+    }
+
+    override fun observeLiveBus() {
+        observeEventSticky<String>(EventBus.WEB_SERVICE) {
+            viewModel.refreshPreferences()
+        }
+        observeEvent<Boolean>(EventBus.DEBUG_MODE_CHANGED) {
+            viewModel.refreshPreferences()
+        }
     }
 
     override fun onCompatCreateOptionsMenu(menu: Menu) {
@@ -80,132 +123,71 @@ class MyFragment() : BaseFragment(R.layout.fragment_my_config), MainFragmentInte
     }
 
     override fun updateMainBottomPadding(bottomPadding: Int) {
-        if (view == null) return
-        (childFragmentManager.findFragmentByTag("prefFragment") as? MyPreferenceFragment)
-            ?.updateMainBottomPadding(bottomPadding)
+        bottomPaddingPx = bottomPadding
     }
 
-    /**
-     * 配置
-     */
-    class MyPreferenceFragment : PreferenceFragment(),
-        SharedPreferences.OnSharedPreferenceChangeListener {
-
-        override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-            putPrefBoolean(PreferKey.webService, WebService.isRun)
-            addPreferencesFromResource(R.xml.pref_main)
-            // 根据调试模式设置决定是否显示调试工具入口
-            findPreference<Preference>("debugTools")?.isVisible = AppConfig.debugMode
-            findPreference<SwitchPreference>("webService")?.onLongClick {
-                if (!WebService.isRun) {
-                    return@onLongClick false
-                }
-                context?.selector(arrayListOf("复制地址", "浏览器打开")) { _, i ->
-                    when (i) {
-                        0 -> context?.sendToClip(it.summary.toString())
-                        1 -> context?.openUrl(it.summary.toString())
-                    }
-                }
-                true
+    private fun openEntry(entry: MyEntry) {
+        when (entry) {
+            MyEntry.BOOK_SOURCE -> startActivity<BookSourceActivity>()
+            MyEntry.TXT_TOC_RULE -> startActivity<TxtTocRuleActivity>()
+            MyEntry.REPLACE_RULE -> startActivity<ReplaceRuleActivity>()
+            MyEntry.DICT_RULE -> startActivity<DictRuleActivity>()
+            MyEntry.BOOKMARK -> startActivity<AllBookmarkActivity>()
+            MyEntry.READ_RECORD -> startActivity<ReadRecordActivity>()
+            MyEntry.URL_RECORD -> startActivity<UrlRecordActivity>()
+            MyEntry.FILE_MANAGE -> startActivity<FileManageActivity>()
+            MyEntry.STORAGE_MANAGE -> startActivity<StorageManageActivity>()
+            MyEntry.DOWNLOAD_MANAGE -> startActivity<DownloadManageActivity>()
+            MyEntry.PRECISE_MANAGE -> startActivity<ConfigActivity> {
+                putExtra("configTag", ConfigTag.PRECISE_MANAGE)
             }
-            observeEventSticky<String>(EventBus.WEB_SERVICE) {
-                findPreference<SwitchPreference>(PreferKey.webService)?.let {
-                    it.isChecked = WebService.isRun
-                    it.summary = if (WebService.isRun) {
-                        WebService.hostAddress
-                    } else {
-                        getString(R.string.web_service_desc)
-                    }
-                }
+            MyEntry.DEBUG_TOOLS -> startActivity<DebugToolsActivity>()
+            MyEntry.THEME_SETTING -> startActivity<ConfigActivity> {
+                putExtra("configTag", ConfigTag.THEME_CONFIG)
             }
-            findPreference<NameListPreference>(PreferKey.themeMode)?.let {
-                it.setOnPreferenceChangeListener { _, _ ->
-                    view?.post { ThemeConfig.applyDayNight(requireContext()) }
-                    true
-                }
+            MyEntry.BACKUP_RESTORE -> startActivity<ConfigActivity> {
+                putExtra("configTag", ConfigTag.BACKUP_CONFIG)
             }
-            // 监听调试模式变化事件，实时更新调试工具入口显示状态
-            observeEvent<Boolean>(EventBus.DEBUG_MODE_CHANGED) {
-                findPreference<Preference>("debugTools")?.isVisible = AppConfig.debugMode
+            MyEntry.OTHER_SETTING -> startActivity<ConfigActivity> {
+                putExtra("configTag", ConfigTag.OTHER_CONFIG)
             }
+            MyEntry.ABOUT -> startActivity<AboutActivity>()
+            MyEntry.EXIT -> activity?.finish()
         }
+    }
 
-        override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-            super.onViewCreated(view, savedInstanceState)
-            listView.setEdgeEffectColor(primaryColor)
-            updateMainBottomPadding((activity as? MainActivity)?.mainContentBottomPadding() ?: 0)
+    private fun applyThemeMode(mode: Int) {
+        val context = context ?: return
+        putPrefString(PreferKey.themeMode, mode.toString())
+        ThemeConfig.applyDayNight(context)
+    }
+
+    private fun setWebServiceRunning(enabled: Boolean) {
+        val context = context ?: return
+        putPrefBoolean(PreferKey.webService, enabled)
+        viewModel.optimisticWebServiceState(enabled)
+        if (enabled) {
+            WebService.start(context)
+        } else {
+            WebService.stop(context)
         }
+    }
 
-        fun updateMainBottomPadding(bottomPadding: Int) {
-            if (view == null) return
-            listView.clipToPadding = false
-            listView.scrollBarStyle = View.SCROLLBARS_INSIDE_OVERLAY
-            listView.updatePadding(bottom = bottomPadding)
-        }
-
-        override fun onResume() {
-            super.onResume()
-            preferenceManager.sharedPreferences?.registerOnSharedPreferenceChangeListener(this)
-        }
-
-        override fun onPause() {
-            preferenceManager.sharedPreferences?.unregisterOnSharedPreferenceChangeListener(this)
-            super.onPause()
-        }
-
-        override fun onSharedPreferenceChanged(
-            sharedPreferences: SharedPreferences?,
-            key: String?
-        ) {
-            when (key) {
-                PreferKey.webService -> {
-                    if (requireContext().getPrefBoolean("webService")) {
-                        WebService.start(requireContext())
-                    } else {
-                        WebService.stop(requireContext())
-                    }
-                }
-
-                PreferKey.debugMode -> {
-                    findPreference<Preference>("debugTools")?.isVisible = AppConfig.debugMode
-                }
-
-                "recordLog" -> LogUtils.upLevel()
+    private fun showWebServiceActions() {
+        val context = context ?: return
+        if (!WebService.isRun) return
+        val address = WebService.hostAddress
+        if (address.isBlank()) return
+        context.selector(
+            arrayListOf(
+                getString(R.string.copy_url),
+                getString(R.string.open_in_browser)
+            )
+        ) { _, index ->
+            when (index) {
+                0 -> context.sendToClip(address)
+                1 -> context.openUrl(address)
             }
         }
-
-        override fun onPreferenceTreeClick(preference: Preference): Boolean {
-            when (preference.key) {
-                "bookSourceManage" -> startActivity<BookSourceActivity>()
-                "replaceManage" -> startActivity<ReplaceRuleActivity>()
-                "dictRuleManage" -> startActivity<DictRuleActivity>()
-                "txtTocRuleManage" -> startActivity<TxtTocRuleActivity>()
-                "debugTools" -> startActivity<DebugToolsActivity>()
-                "urlRecord" -> startActivity<UrlRecordActivity>()
-                "bookmark" -> startActivity<AllBookmarkActivity>()
-                "preciseManage" -> startActivity<ConfigActivity> {
-                    putExtra("configTag", ConfigTag.PRECISE_MANAGE)
-                }
-                "setting" -> startActivity<ConfigActivity> {
-                    putExtra("configTag", ConfigTag.OTHER_CONFIG)
-                }
-                "web_dav_setting" -> startActivity<ConfigActivity> {
-                    putExtra("configTag", ConfigTag.BACKUP_CONFIG)
-                }
-                "theme_setting" -> startActivity<ConfigActivity> {
-                    putExtra("configTag", ConfigTag.THEME_CONFIG)
-                }
-
-                "fileManage" -> startActivity<FileManageActivity>()
-                "readRecord" -> startActivity<ReadRecordActivity>()
-                "storageManage" -> startActivity<StorageManageActivity>()
-                "downloadManage" -> startActivity<DownloadManageActivity>()
-                "about" -> startActivity<AboutActivity>()
-                "exit" -> activity?.finish()
-            }
-            return super.onPreferenceTreeClick(preference)
-        }
-
-
     }
 }
