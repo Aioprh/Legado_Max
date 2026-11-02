@@ -2544,4 +2544,6 @@
     <string name="book_info_progress_title">阅读进度</string>
     <string name="book_info_progress">%1$d / %2$d 章</string>
     <string name="book_info_not_started">未开始</string>
+    <string name="book_info_edit_cover">封面</string>
+    <string name="book_info_edit_basic">基本信息</string>
 </resources>
