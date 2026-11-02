@@ -285,7 +285,7 @@ class BookInfoActivity :
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         binding.titleBar.setBackgroundResource(R.color.transparent)
         binding.refreshLayout?.setColorSchemeColors(accentColor)
-        binding.pbProgress.progressTintList = ColorStateList.valueOf(accentColor)
+        binding.pbProgress?.progressTintList = ColorStateList.valueOf(accentColor)
         binding.ivCoverC.setCardBackgroundColor(backgroundColor)
         if (!AppConfig.bookCoverShadow) {
             binding.ivCoverC.cardElevation = 0f
@@ -1047,15 +1047,17 @@ class BookInfoActivity :
     private fun upReadProgress(book: Book) {
         val total = book.totalChapterNum
         if (total <= 0) {
-            binding.llProgress.gone()
+            binding.llProgress?.gone()
             return
         }
         val hasStarted = book.durChapterIndex > 0 || !book.durChapterTitle.isNullOrBlank()
         val read = if (hasStarted) (book.durChapterIndex + 1).coerceIn(1, total) else 0
-        binding.llProgress.visible()
-        binding.tvProgress.text = getString(R.string.book_info_progress, read, total)
-        binding.pbProgress.max = total
-        binding.pbProgress.progress = read
+        binding.llProgress?.visible()
+        binding.tvProgress?.text = getString(R.string.book_info_progress, read, total)
+        binding.pbProgress?.apply {
+            max = total
+            progress = read
+        }
     }
 
     private fun setSourceVariable() {
