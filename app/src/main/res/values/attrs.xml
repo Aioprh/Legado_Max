@@ -171,6 +171,7 @@
     <declare-styleable name="AccentStrokeTextView">
         <attr name="radius" />
         <attr name="isBottomBackground" />
+        <attr name="isFilled" format="boolean" />
     </declare-styleable>
 
     <declare-styleable name="StrokeTextView">

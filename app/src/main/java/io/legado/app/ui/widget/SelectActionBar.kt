@@ -15,10 +15,8 @@ import io.legado.app.databinding.ViewSelectActionBarBinding
 import io.legado.app.lib.theme.TintHelper
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.bottomBackground
-import io.legado.app.lib.theme.elevation
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.lib.theme.getSecondaryDisabledTextColor
-import io.legado.app.lib.theme.transparentNavBar
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.applyNavigationBarPadding
 import io.legado.app.utils.visible
@@ -41,13 +39,9 @@ class SelectActionBar @JvmOverloads constructor(
 
     init {
         if (!isInEditMode) {
-            val transparentNavBar = context.transparentNavBar
-            if (transparentNavBar) {
-                setBackgroundColor(Color.TRANSPARENT)
-            } else {
-                setBackgroundColor(context.bottomBackground)
-                elevation = context.elevation
-            }
+            // 悬浮卡片样式：自身透明，由内部布局的圆角卡片负责背景与阴影
+            setBackgroundColor(Color.TRANSPARENT)
+            elevation = 0f
             binding.cbSelectedAll.setTextColor(primaryTextColor)
             TintHelper.setTint(binding.cbSelectedAll, context.accentColor, !bgIsLight)
             binding.ivMenuMore.setColorFilter(disabledColor, PorterDuff.Mode.SRC_IN)

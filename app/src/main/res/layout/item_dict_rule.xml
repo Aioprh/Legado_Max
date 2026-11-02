@@ -3,18 +3,15 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginStart="4dp"
-    android:layout_marginTop="4dp"
-    android:layout_marginEnd="4dp"
-    android:layout_marginBottom="4dp"
-    android:background="@drawable/bg_my_list_item"
+    android:layout_marginBottom="9dp"
+    android:background="@drawable/bg_card_item"
     android:gravity="center_vertical"
-    android:minHeight="68dp"
+    android:minHeight="66dp"
     android:orientation="horizontal"
-    android:paddingStart="12dp"
-    android:paddingTop="8dp"
-    android:paddingEnd="8dp"
-    android:paddingBottom="8dp">
+    android:paddingStart="6dp"
+    android:paddingTop="6dp"
+    android:paddingEnd="4dp"
+    android:paddingBottom="6dp">
 
     <io.legado.app.lib.theme.view.ThemeCheckBox
         android:id="@+id/cb_name"
@@ -23,6 +20,10 @@
         android:layout_weight="1"
         android:ellipsize="end"
         android:maxLines="2"
+        android:paddingStart="6dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:textColor="@color/primaryText"
         android:textSize="15sp"
         tools:ignore="RtlSymmetry" />
 
@@ -31,27 +32,27 @@
         android:name="@string/enable"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="4dp"
+        android:layout_marginStart="6dp"
         android:layout_marginEnd="2dp"
         tools:ignore="RtlSymmetry" />
 
     <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/iv_edit"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
         android:background="?android:attr/selectableItemBackgroundBorderless"
         android:contentDescription="@string/edit"
-        android:padding="7dp"
+        android:padding="8dp"
         android:src="@drawable/ic_edit"
         android:tint="@color/primaryText" />
 
     <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/iv_delete"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="@string/delete"
-        android:padding="7dp"
+        android:padding="8dp"
         android:src="@drawable/ic_outline_delete"
         android:tint="@color/primaryText"
         tools:ignore="RtlHardcoded" />

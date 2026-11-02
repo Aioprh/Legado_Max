@@ -28,7 +28,6 @@ import io.legado.app.ui.qrcode.QrCodeResult
 import io.legado.app.ui.widget.SelectActionBar
 import io.legado.app.ui.widget.recycler.DragSelectTouchHelper
 import io.legado.app.ui.widget.recycler.ItemTouchCallback
-import io.legado.app.ui.widget.recycler.VerticalDivider
 
 import io.legado.app.utils.ACache
 import io.legado.app.utils.GSON
@@ -93,7 +92,6 @@ sendToClip(text)
 
     private fun initView() = binding.run {
         recyclerView.setEdgeEffectColor(primaryColor)
-        recyclerView.addItemDecoration(VerticalDivider(this@TxtTocRuleActivity))
         recyclerView.adapter = adapter
         recyclerView.setFastScrollEnabled(true)
         recyclerView.isVerticalScrollBarEnabled = false

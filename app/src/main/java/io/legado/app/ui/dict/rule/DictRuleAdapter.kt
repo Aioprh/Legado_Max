@@ -10,10 +10,8 @@ import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.base.adapter.RecyclerAdapter
 import io.legado.app.data.entities.DictRule
 import io.legado.app.databinding.ItemDictRuleBinding
-import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.ui.widget.recycler.DragSelectTouchHelper
 import io.legado.app.ui.widget.recycler.ItemTouchCallback
-import io.legado.app.utils.ColorUtils
 
 
 class DictRuleAdapter(context: Context, var callBack: CallBack) :
@@ -96,7 +94,6 @@ class DictRuleAdapter(context: Context, var callBack: CallBack) :
     ) {
         binding.run {
             if (payloads.isEmpty()) {
-                root.setBackgroundColor(ColorUtils.withAlpha(context.backgroundColor, 0.5f))
                 cbName.text = item.name
                 swtEnabled.isChecked = item.enabled
                 cbName.isChecked = selected.contains(item)
