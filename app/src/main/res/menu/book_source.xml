@@ -120,7 +120,7 @@
         android:id="@+id/menu_ai_generate"
         android:icon="@drawable/ic_ai_generate"
         android:title="@string/ai_generate_book_source"
-        app:showAsAction="never" />
+        app:showAsAction="ifRoom" />
 
     <item
         android:id="@+id/menu_import_local"
