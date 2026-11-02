@@ -12,6 +12,7 @@
     <color name="night_mask">#00000000</color>
     <color name="background">@color/md_grey_50</color>
     <color name="background_card">@color/md_grey_100</color>
+    <color name="surface_card">#FFFFFF</color>
     <color name="background_menu">@color/md_grey_200</color>
     <color name="dialog_surface">#FFFFFFFF</color>
     <color name="background_prefs">#7fffffff</color>
