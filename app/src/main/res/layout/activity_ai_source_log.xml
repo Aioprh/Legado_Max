@@ -13,42 +13,67 @@
         app:displayHomeAsUp="true"
         app:title="@string/ai_log_title" />
 
-    <ScrollView
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_weight="1"
+        android:paddingStart="12dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="12dp">
 
         <TextView
             android:id="@+id/tv_log"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_margin="16dp"
+            android:background="@drawable/bg_form_card"
+            android:fontFamily="monospace"
+            android:lineSpacingExtra="4dp"
+            android:padding="14dp"
+            android:textColor="@color/primaryText"
             android:textIsSelectable="true"
             android:textSize="12sp"
-            android:fontFamily="monospace" />
-    </ScrollView>
+            tools:text="10:24:01 INFO 抓取HTML 成功：编码 UTF-8" />
+
+    </androidx.core.widget.NestedScrollView>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="12dp">
-
-        <Button
-            android:id="@+id/btn_copy"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginEnd="8dp"
-            android:text="@string/ai_log_copy"
-            tools:ignore="TouchTargetSizeCheck" />
+        android:paddingStart="12dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="12dp">
 
         <Button
             android:id="@+id/btn_clear"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="46dp"
+            android:layout_marginEnd="8dp"
             android:layout_weight="1"
+            android:background="@drawable/bg_btn_secondary"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:stateListAnimator="@null"
             android:text="@string/clear"
+            android:textAllCaps="false"
+            android:textColor="@color/primaryText"
+            android:textSize="13.5sp"
+            tools:ignore="TouchTargetSizeCheck" />
+
+        <Button
+            android:id="@+id/btn_copy"
+            android:layout_width="0dp"
+            android:layout_height="46dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_btn_primary"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:stateListAnimator="@null"
+            android:text="@string/ai_log_copy"
+            android:textAllCaps="false"
+            android:textColor="@android:color/white"
+            android:textSize="13.5sp"
             tools:ignore="TouchTargetSizeCheck" />
     </LinearLayout>
 </LinearLayout>

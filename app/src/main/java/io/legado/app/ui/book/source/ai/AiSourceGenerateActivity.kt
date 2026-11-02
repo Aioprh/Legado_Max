@@ -9,11 +9,14 @@ import android.widget.SeekBar
 import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
+import androidx.core.widget.doAfterTextChanged
 import io.legado.app.api.controller.AiSourceController
 import io.legado.app.R
 import io.legado.app.base.VMBaseActivity
 import io.legado.app.databinding.ActivityAiSourceGenerateBinding
 import io.legado.app.databinding.DialogAiSourceSettingsBinding
+import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.ui.book.source.edit.BookSourceEditActivity
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.toastOnUi
@@ -66,6 +69,49 @@ class AiSourceGenerateActivity :
         binding.btnAutoFix.setOnClickListener { autoFix() }
         binding.btnImport.setOnClickListener { importToEditor() }
         binding.btnClear.setOnClickListener { clearAll() }
+        bindCollapsibleSections()
+        updateServiceStatus()
+        binding.etBaseUrl.doAfterTextChanged { updateServiceStatus() }
+        binding.etApiKey.doAfterTextChanged { updateServiceStatus() }
+    }
+
+    /** 折叠区：请求头/Cookie 与 HTML 预览，页面默认只展示主流程 */
+    private fun bindCollapsibleSections() {
+        binding.tvMoreToggle.setOnClickListener {
+            val expand = binding.llMore.visibility != View.VISIBLE
+            binding.llMore.visibility = if (expand) View.VISIBLE else View.GONE
+            binding.tvMoreToggle.setText(
+                if (expand) R.string.ai_more_collapse else R.string.ai_more_toggle
+            )
+        }
+        binding.tvHtmlToggle.setOnClickListener {
+            setHtmlExpanded(binding.llHtml.visibility != View.VISIBLE)
+        }
+    }
+
+    private fun setHtmlExpanded(expand: Boolean) {
+        binding.llHtml.visibility = if (expand) View.VISIBLE else View.GONE
+        binding.tvHtmlToggle.setText(
+            if (expand) R.string.ai_html_collapse else R.string.ai_html_toggle
+        )
+    }
+
+    /** 顶部状态：接口是否已配好，避免用户点生成才发现缺 Key */
+    private fun updateServiceStatus() {
+        val hasUrl = !binding.etBaseUrl.text.isNullOrBlank()
+        val hasKey = !binding.etApiKey.text.isNullOrBlank()
+        val ready = hasUrl && hasKey
+        binding.tvAiStatus.setText(
+            when {
+                !hasUrl -> R.string.ai_service_unconfigured
+                !hasKey -> R.string.ai_service_missing_key
+                else -> R.string.ai_service_ready
+            }
+        )
+        binding.tvAiStatus.setTextColor(
+            if (ready) ThemeStore.accentColor(this)
+            else ContextCompat.getColor(this, R.color.secondaryText)
+        )
     }
 
     override fun onCompatCreateOptionsMenu(menu: Menu): Boolean {
@@ -135,6 +181,7 @@ class AiSourceGenerateActivity :
                 }
             }
             binding.tvHtmlHint.visibility = View.VISIBLE
+            setHtmlExpanded(true)
             binding.tvStatus.text = "抓取成功（编码 ${content.charset}，共 ${content.length} 字符）"
             toastOnUi("抓取成功（编码 ${content.charset}，共 ${content.length} 字符）")
             saveHistory(content.html, binding.etResult.text?.toString())
@@ -312,10 +359,17 @@ class AiSourceGenerateActivity :
             return
         }
         val checks = AiSourceValidate.validate(text)
-        binding.tvChecks.text = checks.joinToString("\n") { c ->
-            "${if (c.pass) "✓" else "✗"} ${c.name}${if (c.pass) "" else "：${c.msg}"}"
-        }
         val pass = checks.count { it.pass }
+        binding.tvChecks.text = buildString {
+            appendLine("规则校验 · 通过 $pass/${checks.size}")
+            append(checks.joinToString("\n") { c ->
+                "${if (c.pass) "✓" else "✗"} ${c.name}${if (c.pass) "" else "：${c.msg}"}"
+            })
+        }
+        binding.tvChecks.setTextColor(
+            if (pass == checks.size) ThemeStore.accentColor(this)
+            else ContextCompat.getColor(this, R.color.primaryText)
+        )
         checks.filterNot { it.pass }.forEach {
             AiSourceLog.log("ERROR", "规则校验", "${it.name}：${it.msg}")
         }
@@ -350,6 +404,7 @@ class AiSourceGenerateActivity :
         val userPrompt = buildUserPrompt(url, keyword, typeName, typeIndex, content, html)
         binding.btnAutoFix.isEnabled = false
         binding.tvStatus.text = "正在用真实搜索验证并自动修复，最多 ${viewModel.maxFixRounds} 轮..."
+        binding.tvChecks.setTextColor(ContextCompat.getColor(this, R.color.primaryText))
         binding.tvChecks.text = binding.tvStatus.text
         AiSourceLog.log("INFO", "自动修复", "开始，最多 ${viewModel.maxFixRounds} 轮")
         viewModel.execute {
@@ -412,6 +467,7 @@ class AiSourceGenerateActivity :
         htmlContent = null
         binding.etHtmlPreview.setText("")
         binding.tvHtmlHint.visibility = View.GONE
+        setHtmlExpanded(false)
         binding.etResult.setText("")
         binding.etCookie.setText("")
         binding.tvChecks.text = ""
@@ -453,6 +509,7 @@ class AiSourceGenerateActivity :
                 if (rec.html.isNotBlank()) {
                     binding.etHtmlPreview.setText(rec.html)
                     binding.tvHtmlHint.visibility = View.VISIBLE
+                    setHtmlExpanded(true)
                 }
                 if (rec.result.isNotBlank()) binding.etResult.setText(rec.result)
                 AiSourceLog.log("INFO", "历史记录", "已恢复 ${rec.timeText()}｜${rec.url}")

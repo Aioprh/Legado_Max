@@ -4,21 +4,25 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="24dp">
+    android:paddingStart="20dp"
+    android:paddingTop="16dp"
+    android:paddingEnd="20dp"
+    android:paddingBottom="8dp">
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:paddingStart="2dp"
+        android:paddingBottom="2dp"
         android:text="@string/ai_settings_temp"
-        android:textSize="14sp"
-        android:textStyle="bold" />
+        android:textColor="@color/secondaryText"
+        android:textSize="12sp" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingTop="4dp">
+        android:orientation="horizontal">
 
         <SeekBar
             android:id="@+id/seek_temp"
@@ -30,71 +34,68 @@
 
         <TextView
             android:id="@+id/tv_temp_value"
-            android:layout_width="48dp"
+            android:layout_width="44dp"
             android:layout_height="wrap_content"
             android:gravity="end"
+            android:textColor="@color/primaryText"
             android:textSize="14sp"
             tools:text="0.3" />
     </LinearLayout>
 
-    <TextView
+    <io.legado.app.ui.widget.text.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingTop="16dp"
-        android:text="@string/ai_settings_html_limit"
-        android:textSize="14sp"
-        android:textStyle="bold" />
+        android:layout_marginTop="6dp"
+        android:hint="@string/ai_settings_html_limit">
 
-    <io.legado.app.lib.theme.view.ThemeEditText
-        android:id="@+id/et_html_limit"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:inputType="number"
-        android:paddingTop="4dp" />
+        <io.legado.app.lib.theme.view.ThemeEditText
+            android:id="@+id/et_html_limit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="number" />
+    </io.legado.app.ui.widget.text.TextInputLayout>
 
-    <TextView
+    <io.legado.app.ui.widget.text.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingTop="16dp"
-        android:text="@string/ai_settings_fix_rounds"
-        android:textSize="14sp"
-        android:textStyle="bold" />
+        android:hint="@string/ai_settings_fix_rounds">
 
-    <io.legado.app.lib.theme.view.ThemeEditText
-        android:id="@+id/et_fix_rounds"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:inputType="number"
-        android:paddingTop="4dp" />
+        <io.legado.app.lib.theme.view.ThemeEditText
+            android:id="@+id/et_fix_rounds"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="number" />
+    </io.legado.app.ui.widget.text.TextInputLayout>
 
-    <TextView
+    <io.legado.app.ui.widget.text.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingTop="16dp"
-        android:paddingBottom="4dp"
-        android:text="@string/ai_settings_custom_prompt"
-        android:textSize="14sp"
-        android:textStyle="bold" />
+        android:hint="@string/ai_settings_custom_prompt">
 
-    <io.legado.app.lib.theme.view.ThemeEditText
-        android:id="@+id/et_custom_prompt"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:inputType="textMultiLine"
-        android:maxLines="8"
-        android:minLines="4"
-        android:paddingTop="4dp"
-        android:textSize="11sp"
-        android:fontFamily="monospace" />
+        <io.legado.app.lib.theme.view.ThemeEditText
+            android:id="@+id/et_custom_prompt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:inputType="textMultiLine"
+            android:maxLines="8"
+            android:minLines="4"
+            android:textSize="11sp" />
+    </io.legado.app.ui.widget.text.TextInputLayout>
 
     <TextView
         android:id="@+id/tv_reset_prompt"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:padding="4dp"
+        android:layout_gravity="end"
+        android:layout_marginTop="6dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:paddingStart="6dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="6dp"
+        android:paddingBottom="6dp"
         android:text="@string/ai_settings_reset_prompt"
-        android:textColor="?attr/colorPrimary"
+        android:textColor="@color/accent"
         android:textSize="13sp" />
 
 </LinearLayout>

@@ -2575,4 +2575,14 @@ Night: %5$s / %6$s / %7$s / %8$s</string>
     <string name="form_section_basic">Basic info</string>
     <string name="form_section_scope">Scope</string>
     <string name="form_section_advanced">Advanced</string>
+    <string name="ai_section_service">AI 服务</string>
+    <string name="ai_section_site">目标站点</string>
+    <string name="ai_section_generate">生成与校验</string>
+    <string name="ai_service_unconfigured">未配置接口</string>
+    <string name="ai_service_missing_key">缺少 API Key</string>
+    <string name="ai_service_ready">接口已就绪</string>
+    <string name="ai_more_toggle">请求头与 Cookie（可选）</string>
+    <string name="ai_more_collapse">收起请求头与 Cookie</string>
+    <string name="ai_html_toggle">查看抓取的 HTML</string>
+    <string name="ai_html_collapse">收起 HTML</string>
 </resources>
