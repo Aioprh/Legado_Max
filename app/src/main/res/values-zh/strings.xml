@@ -2520,4 +2520,7 @@
     <string name="my_bookmark_summary">共 %1$d 个书签</string>
     <string name="my_version_summary">版本 %1$s</string>
     <string name="my_footer">阅读 Max · 本地优先 · 无账号 · 无云端</string>
+    <string name="form_section_basic">基本信息</string>
+    <string name="form_section_scope">作用范围</string>
+    <string name="form_section_advanced">高级选项</string>
 </resources>

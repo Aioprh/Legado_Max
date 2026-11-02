@@ -2572,4 +2572,7 @@ Night: %5$s / %6$s / %7$s / %8$s</string>
     <string name="my_bookmark_summary">%1$d bookmarks</string>
     <string name="my_version_summary">Version %1$s</string>
     <string name="my_footer">Legado Max · local first · no account · no cloud</string>
+    <string name="form_section_basic">Basic info</string>
+    <string name="form_section_scope">Scope</string>
+    <string name="form_section_advanced">Advanced</string>
 </resources>

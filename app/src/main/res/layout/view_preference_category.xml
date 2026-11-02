@@ -8,20 +8,19 @@
     <View
         android:id="@+id/preference_divider_above"
         android:layout_width="match_parent"
-        android:layout_height="12dp" />
+        android:layout_height="18dp" />
 
     <TextView
         android:id="@+id/preference_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingStart="18dp"
-        android:paddingTop="8dp"
-        android:paddingEnd="18dp"
+        android:paddingStart="20dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="20dp"
         android:paddingBottom="8dp"
-        android:textColor="@color/accent"
-        android:textSize="13sp"
-        android:textStyle="bold"
-        android:letterSpacing="0.04"
+        android:textColor="@color/secondaryText"
+        android:textSize="12sp"
+        android:letterSpacing="0.03"
         android:textAllCaps="false"
         tools:ignore="RtlSymmetry" />
 

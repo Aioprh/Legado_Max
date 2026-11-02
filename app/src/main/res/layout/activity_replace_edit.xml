@@ -17,153 +17,249 @@
 
     <io.legado.app.ui.widget.NoChildScrollNestedScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
 
         <LinearLayout
             android:id="@+id/ll_content"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="10dp">
-
-            <io.legado.app.ui.widget.text.TextInputLayout
-                android:id="@+id/til_name"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="@string/replace_rule_summary">
-
-                <io.legado.app.lib.theme.view.ThemeEditText
-                    android:id="@+id/et_name"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck" />
-            </io.legado.app.ui.widget.text.TextInputLayout>
-
-            <io.legado.app.ui.widget.text.TextInputLayout
-                android:id="@+id/til_group"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="@string/group">
-
-                <io.legado.app.lib.theme.view.ThemeEditText
-                    android:id="@+id/et_group"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck" />
-            </io.legado.app.ui.widget.text.TextInputLayout>
-
-            <io.legado.app.ui.widget.text.TextInputLayout
-                android:id="@+id/til_replace_rule"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="@string/replace_rule">
-
-                <io.legado.app.lib.theme.view.ThemeEditText
-                    android:id="@+id/et_replace_rule"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck" />
-            </io.legado.app.ui.widget.text.TextInputLayout>
+            android:paddingHorizontal="12dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="24dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
+                android:background="@drawable/bg_form_card"
+                android:orientation="vertical"
+                android:paddingHorizontal="12dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="4dp">
 
-                <io.legado.app.lib.theme.view.ThemeCheckBox
-                    android:id="@+id/cb_use_regex"
-                    android:layout_width="0dp"
+                <TextView
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/use_regex"
-                    tools:ignore="TouchTargetSizeCheck" />
+                    android:paddingStart="4dp"
+                    android:paddingEnd="4dp"
+                    android:paddingBottom="2dp"
+                    android:text="@string/form_section_basic"
+                    android:textColor="@color/secondaryText"
+                    android:textSize="12sp" />
 
-                <ImageView
-                    android:id="@+id/iv_help"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@drawable/ic_help"
-                    app:tint="@color/primaryText"
-                    android:contentDescription="@string/help" />
+                <io.legado.app.ui.widget.text.TextInputLayout
+                    android:id="@+id/til_name"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/replace_rule_summary">
+
+                    <io.legado.app.lib.theme.view.ThemeEditText
+                        android:id="@+id/et_name"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck" />
+                </io.legado.app.ui.widget.text.TextInputLayout>
+
+                <io.legado.app.ui.widget.text.TextInputLayout
+                    android:id="@+id/til_group"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/group">
+
+                    <io.legado.app.lib.theme.view.ThemeEditText
+                        android:id="@+id/et_group"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck" />
+                </io.legado.app.ui.widget.text.TextInputLayout>
 
             </LinearLayout>
 
-            <io.legado.app.ui.widget.text.TextInputLayout
-                android:id="@+id/til_replace_to"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="@string/replace_to">
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_form_card"
+                android:orientation="vertical"
+                android:paddingHorizontal="12dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="4dp">
 
-                <io.legado.app.lib.theme.view.ThemeEditText
-                    android:id="@+id/et_replace_to"
+                <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck" />
-            </io.legado.app.ui.widget.text.TextInputLayout>
+                    android:paddingStart="4dp"
+                    android:paddingEnd="4dp"
+                    android:paddingBottom="2dp"
+                    android:text="@string/replace_rule"
+                    android:textColor="@color/secondaryText"
+                    android:textSize="12sp" />
 
-            <androidx.appcompat.widget.LinearLayoutCompat
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-
-                <io.legado.app.lib.theme.view.ThemeCheckBox
-                    android:id="@+id/cb_scope_title"
-                    android:layout_width="wrap_content"
+                <io.legado.app.ui.widget.text.TextInputLayout
+                    android:id="@+id/til_replace_rule"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:checked="false"
-                    android:text="@string/scope_title"
-                    tools:ignore="TouchTargetSizeCheck" />
+                    android:hint="@string/replace_rule">
 
-                <io.legado.app.lib.theme.view.ThemeCheckBox
-                    android:id="@+id/cb_scope_content"
-                    android:layout_width="wrap_content"
+                    <io.legado.app.lib.theme.view.ThemeEditText
+                        android:id="@+id/et_replace_rule"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck" />
+                </io.legado.app.ui.widget.text.TextInputLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginLeft="10dp"
-                    android:checked="true"
-                    android:text="@string/scope_content"
-                    tools:ignore="RtlHardcoded,TouchTargetSizeCheck" />
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="4dp">
 
-            </androidx.appcompat.widget.LinearLayoutCompat>
+                    <io.legado.app.lib.theme.view.ThemeCheckBox
+                        android:id="@+id/cb_use_regex"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/use_regex"
+                        tools:ignore="TouchTargetSizeCheck" />
 
-            <io.legado.app.ui.widget.text.TextInputLayout
-                android:id="@+id/til_scope"
+                    <ImageView
+                        android:id="@+id/iv_help"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginEnd="4dp"
+                        android:contentDescription="@string/help"
+                        android:src="@drawable/ic_help"
+                        app:tint="@color/secondaryText" />
+
+                </LinearLayout>
+
+                <io.legado.app.ui.widget.text.TextInputLayout
+                    android:id="@+id/til_replace_to"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/replace_to">
+
+                    <io.legado.app.lib.theme.view.ThemeEditText
+                        android:id="@+id/et_replace_to"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck" />
+                </io.legado.app.ui.widget.text.TextInputLayout>
+
+            </LinearLayout>
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="@string/replace_scope">
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_form_card"
+                android:orientation="vertical"
+                android:paddingHorizontal="12dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="4dp">
 
-                <io.legado.app.lib.theme.view.ThemeEditText
-                    android:id="@+id/et_scope"
+                <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck" />
-            </io.legado.app.ui.widget.text.TextInputLayout>
+                    android:paddingStart="4dp"
+                    android:paddingEnd="4dp"
+                    android:paddingBottom="2dp"
+                    android:text="@string/form_section_scope"
+                    android:textColor="@color/secondaryText"
+                    android:textSize="12sp" />
 
-            <io.legado.app.ui.widget.text.TextInputLayout
-                android:id="@+id/til_exclude_scope"
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="4dp">
+
+                    <io.legado.app.lib.theme.view.ThemeCheckBox
+                        android:id="@+id/cb_scope_title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="false"
+                        android:text="@string/scope_title"
+                        tools:ignore="TouchTargetSizeCheck" />
+
+                    <io.legado.app.lib.theme.view.ThemeCheckBox
+                        android:id="@+id/cb_scope_content"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:checked="true"
+                        android:text="@string/scope_content"
+                        tools:ignore="TouchTargetSizeCheck" />
+
+                </LinearLayout>
+
+                <io.legado.app.ui.widget.text.TextInputLayout
+                    android:id="@+id/til_scope"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/replace_scope">
+
+                    <io.legado.app.lib.theme.view.ThemeEditText
+                        android:id="@+id/et_scope"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck" />
+                </io.legado.app.ui.widget.text.TextInputLayout>
+
+                <io.legado.app.ui.widget.text.TextInputLayout
+                    android:id="@+id/til_exclude_scope"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/replace_exclude_scope">
+
+                    <io.legado.app.lib.theme.view.ThemeEditText
+                        android:id="@+id/et_exclude_scope"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck" />
+                </io.legado.app.ui.widget.text.TextInputLayout>
+
+            </LinearLayout>
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="@string/replace_exclude_scope">
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_form_card"
+                android:orientation="vertical"
+                android:paddingHorizontal="12dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="4dp">
 
-                <io.legado.app.lib.theme.view.ThemeEditText
-                    android:id="@+id/et_exclude_scope"
+                <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck" />
-            </io.legado.app.ui.widget.text.TextInputLayout>
+                    android:paddingStart="4dp"
+                    android:paddingEnd="4dp"
+                    android:paddingBottom="2dp"
+                    android:text="@string/form_section_advanced"
+                    android:textColor="@color/secondaryText"
+                    android:textSize="12sp" />
 
-            <io.legado.app.ui.widget.text.TextInputLayout
-                android:id="@+id/til_timeout"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="@string/timeout_millisecond">
-
-                <io.legado.app.lib.theme.view.ThemeEditText
-                    android:id="@+id/et_timeout"
+                <io.legado.app.ui.widget.text.TextInputLayout
+                    android:id="@+id/til_timeout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="number"
-                    tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck" />
-            </io.legado.app.ui.widget.text.TextInputLayout>
+                    android:hint="@string/timeout_millisecond">
+
+                    <io.legado.app.lib.theme.view.ThemeEditText
+                        android:id="@+id/et_timeout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"
+                        tools:ignore="SpeakableTextPresentCheck,TouchTargetSizeCheck" />
+                </io.legado.app.ui.widget.text.TextInputLayout>
+
+            </LinearLayout>
 
         </LinearLayout>
     </io.legado.app.ui.widget.NoChildScrollNestedScrollView>
