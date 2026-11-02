@@ -2585,4 +2585,15 @@ Night: %5$s / %6$s / %7$s / %8$s</string>
     <string name="ai_more_collapse">收起请求头与 Cookie</string>
     <string name="ai_html_toggle">查看抓取的 HTML</string>
     <string name="ai_html_collapse">收起 HTML</string>
+    <string name="book_info_intro">Introduction</string>
+    <string name="book_info_author_other_works">Other works by the author</string>
+    <string name="book_info_label_author">Author</string>
+    <string name="book_info_label_origin">Source</string>
+    <string name="book_info_label_latest">Latest</string>
+    <string name="book_info_label_group">Shelf</string>
+    <string name="book_info_label_toc">Chapter</string>
+    <string name="book_info_label_read">Reading</string>
+    <string name="book_info_progress_title">Reading progress</string>
+    <string name="book_info_progress">%1$d / %2$d chapters</string>
+    <string name="book_info_not_started">Not started</string>
 </resources>

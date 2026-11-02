@@ -2,6 +2,7 @@ package io.legado.app.ui.book.info
 
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
@@ -284,20 +285,14 @@ class BookInfoActivity :
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         binding.titleBar.setBackgroundResource(R.color.transparent)
         binding.refreshLayout?.setColorSchemeColors(accentColor)
-        binding.arcView?.setBgColor(backgroundColor)
-        binding.llContentBg?.setBackgroundColor(backgroundColor)
-        binding.llInfo.setBackgroundColor(backgroundColor)
-        binding.llAuthorOtherWorks?.setBackgroundColor(backgroundColor)
-        binding.vSpacerBottom?.setBackgroundColor(backgroundColor)
+        binding.pbProgress.progressTintList = ColorStateList.valueOf(accentColor)
         binding.ivCoverC.setCardBackgroundColor(backgroundColor)
         if (!AppConfig.bookCoverShadow) {
             binding.ivCoverC.cardElevation = 0f
             binding.ivCoverC.setCardBackgroundColor(android.graphics.Color.TRANSPARENT)
         }
-        binding.flAction.setBackgroundColor(bottomBackground)
         binding.flAction.applyNavigationBarPadding(withInitialPadding = true)
-        binding.tvShelf.setTextColor(getPrimaryTextColor(ColorUtils.isColorLight(bottomBackground)))
-        binding.tvToc.text = getString(R.string.toc_s, getString(R.string.loading))
+        binding.tvToc.text = getString(R.string.loading)
         initAuthorOtherWorksView()
         viewModel.bookData.observe(this) { showBook(it) }
         viewModel.chapterListData.observe(this) { upLoading(false, it) }
@@ -572,14 +567,15 @@ class BookInfoActivity :
     private fun showBook(book: Book) = binding.run {
         showCover(book)
         tvName.text = book.name
-        tvAuthor.text = getString(R.string.author_show, book.getRealAuthor())
-        tvOrigin.text = getString(R.string.origin_show, book.originName)
-        tvLasted.text = getString(R.string.lasted_show, book.latestChapterTitle)
+        tvAuthor.text = book.getRealAuthor().ifBlank { getString(R.string.author) }
+        tvOrigin.text = book.originName
+        tvLasted.text = book.latestChapterTitle
         showBookIntro(book)
         upReadRecord(book)
+        upReadProgress(book)
         if (book.isWebFile) {
             llToc.gone()
-            tvLasted.text = getString(R.string.lasted_show, "下载中...")
+            tvLasted.text = getString(R.string.downloading)
         } else {
             llToc.visible()
         }
@@ -824,21 +820,19 @@ class BookInfoActivity :
     private fun upLoading(isLoading: Boolean, chapterList: List<BookChapter>? = null) {
         when {
             isLoading -> {
-                binding.tvToc.text = getString(R.string.toc_s, getString(R.string.loading))
+                binding.tvToc.text = getString(R.string.loading)
             }
 
             chapterList.isNullOrEmpty() -> {
-                binding.tvToc.text = getString(
-                    R.string.toc_s,
-                    getString(R.string.error_load_toc)
-                )
-                binding.tvLasted.text = getString(R.string.lasted_show, book?.latestChapterTitle)
+                binding.tvToc.text = getString(R.string.error_load_toc)
+                binding.tvLasted.text = book?.latestChapterTitle
             }
 
             else -> {
                 book?.let {
-                    binding.tvToc.text = getString(R.string.toc_s, it.durChapterTitle)
-                    binding.tvLasted.text = getString(R.string.lasted_show, it.latestChapterTitle)
+                    binding.tvToc.text = it.durChapterTitle.orEmpty()
+                        .ifBlank { getString(R.string.book_info_not_started) }
+                    binding.tvLasted.text = it.latestChapterTitle
                 }
             }
         }
@@ -857,12 +851,12 @@ class BookInfoActivity :
         viewModel.loadGroup(groupId) {
             if (it.isNullOrEmpty()) {
                 binding.tvGroup.text = if (book?.isLocal == true) {
-                    getString(R.string.group_s, getString(R.string.local_no_group))
+                    getString(R.string.local_no_group)
                 } else {
-                    getString(R.string.group_s, getString(R.string.no_group))
+                    getString(R.string.no_group)
                 }
             } else {
-                binding.tvGroup.text = getString(R.string.group_s, it)
+                binding.tvGroup.text = it
             }
         }
     }
@@ -1043,12 +1037,25 @@ class BookInfoActivity :
                     val summary = if (totalReadTime <= 0L) {
                         getString(R.string.no_read_record)
                     } else {
-                        val totalStr = io.legado.app.utils.formatReadDuration(totalReadTime)
-                        "阅读时长：$totalStr"
+                        io.legado.app.utils.formatReadDuration(totalReadTime)
                     }
                     binding.tvReadRecord.text = summary
                 }
         }
+    }
+
+    private fun upReadProgress(book: Book) {
+        val total = book.totalChapterNum
+        if (total <= 0) {
+            binding.llProgress.gone()
+            return
+        }
+        val hasStarted = book.durChapterIndex > 0 || !book.durChapterTitle.isNullOrBlank()
+        val read = if (hasStarted) (book.durChapterIndex + 1).coerceIn(1, total) else 0
+        binding.llProgress.visible()
+        binding.tvProgress.text = getString(R.string.book_info_progress, read, total)
+        binding.pbProgress.max = total
+        binding.pbProgress.progress = read
     }
 
     private fun setSourceVariable() {

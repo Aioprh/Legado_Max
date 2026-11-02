@@ -2533,4 +2533,15 @@
     <string name="ai_more_collapse">收起请求头与 Cookie</string>
     <string name="ai_html_toggle">查看抓取的 HTML</string>
     <string name="ai_html_collapse">收起 HTML</string>
+    <string name="book_info_intro">简介</string>
+    <string name="book_info_author_other_works">作者其他作品</string>
+    <string name="book_info_label_author">作者</string>
+    <string name="book_info_label_origin">来源</string>
+    <string name="book_info_label_latest">最新章节</string>
+    <string name="book_info_label_group">分组</string>
+    <string name="book_info_label_toc">目录</string>
+    <string name="book_info_label_read">阅读</string>
+    <string name="book_info_progress_title">阅读进度</string>
+    <string name="book_info_progress">%1$d / %2$d 章</string>
+    <string name="book_info_not_started">未开始</string>
 </resources>

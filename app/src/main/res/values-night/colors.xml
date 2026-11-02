@@ -63,4 +63,7 @@
     <color name="background_tab_container">#0FFFFFFF</color>
     <color name="background_tab_selected">#10FFFFFF</color>
     <color name="background_preview_card">#10FFFFFF</color>
+    <color name="search_card_start">#1FFFFFFF</color>
+    <color name="search_card_end">#0AFFFFFF</color>
+    <color name="search_card_stroke">#1AFFFFFF</color>
 </resources>
