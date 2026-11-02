@@ -144,10 +144,11 @@ class AiSourceGenerateActivity :
         viewModel.reviewProbe = binding.swReviewProbe.isChecked
     }
 
-    private fun fetchHtml() {
+    private fun fetchHtml(onResult: ((Boolean) -> Unit)? = null) {
         val url = binding.etUrl.text?.toString()?.trim()
         if (url.isNullOrEmpty()) {
             toastOnUi("请先填写网站地址")
+            onResult?.invoke(false)
             return
         }
         val keyword = binding.etKeyword.text?.toString()?.trim()
@@ -185,10 +186,12 @@ class AiSourceGenerateActivity :
             binding.tvStatus.text = "抓取成功（编码 ${content.charset}，共 ${content.length} 字符）"
             toastOnUi("抓取成功（编码 ${content.charset}，共 ${content.length} 字符）")
             saveHistory(content.html, binding.etResult.text?.toString())
+            onResult?.invoke(true)
         }.onError {
             AiSourceLog.log("ERROR", "抓取HTML", "${it.message}")
             binding.tvStatus.text = "抓取失败: ${it.message}"
             toastOnUi("抓取失败: ${it.message}")
+            onResult?.invoke(false)
         }.onFinally {
             binding.btnFetchHtml.isEnabled = true
         }
@@ -201,16 +204,34 @@ class AiSourceGenerateActivity :
             toastOnUi("请先填写 AI 接口地址和 API Key")
             return
         }
-        val url = binding.etUrl.text?.toString()?.trim()
-        if (url.isNullOrEmpty()) {
+        if (binding.etUrl.text.isNullOrBlank()) {
             AiSourceLog.log("WARN", "生成书源", "未填写网站地址，已取消")
             toastOnUi("请先填写网站地址")
             return
         }
+        if (htmlContent?.html.isNullOrEmpty()) {
+            // 还没抓过网页时自动补一次抓取，省掉「先抓取再生成」的来回操作
+            AiSourceLog.log("INFO", "生成书源", "尚未抓取网页，自动先抓取")
+            binding.btnGenerate.isEnabled = false
+            binding.tvStatus.text = "正在抓取网页，完成后自动生成..."
+            fetchHtml { ok ->
+                if (ok) {
+                    doGenerate()
+                } else {
+                    binding.btnGenerate.isEnabled = true
+                }
+            }
+            return
+        }
+        doGenerate()
+    }
+
+    private fun doGenerate() {
+        val url = binding.etUrl.text?.toString()?.trim()
         val html = htmlContent?.html
-        if (html.isNullOrEmpty()) {
-            AiSourceLog.log("WARN", "生成书源", "未抓取 HTML，已取消")
-            toastOnUi("请先点击「抓取HTML」获取网页内容")
+        if (url.isNullOrEmpty() || html.isNullOrEmpty()) {
+            binding.btnGenerate.isEnabled = true
+            toastOnUi("请先抓取网页内容")
             return
         }
         val keyword = binding.etKeyword.text?.toString()?.trim()
