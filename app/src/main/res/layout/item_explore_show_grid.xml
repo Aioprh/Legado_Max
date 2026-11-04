@@ -1,148 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:foreground="?attr/selectableItemBackground"
-    app:cardBackgroundColor="@android:color/transparent"
-    app:cardCornerRadius="16dp"
-    app:cardElevation="0dp"
-    app:cardUseCompatPadding="false">
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="wrap_content" android:foreground="?attr/selectableItemBackground" android:clipToOutline="true" app:cardBackgroundColor="@android:color/transparent" app:cardCornerRadius="16dp" app:cardElevation="0dp" app:cardPreventCornerOverlap="true" app:cardUseCompatPadding="false">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@drawable/bg_discover_book_card"
-        android:clipToOutline="true"
-        android:paddingBottom="10dp">
+    <androidx.constraintlayout.widget.ConstraintLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_discover_book_card">
 
-        <io.legado.app.ui.widget.image.CoverImageView
-            android:id="@+id/iv_cover_grid"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:contentDescription="@string/img_cover"
-            android:scaleType="centerCrop"
-            android:src="@drawable/image_cover_default"
-            app:layout_constraintDimensionRatio="1:1"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+        <io.legado.app.ui.widget.image.CoverImageView android:id="@+id/iv_cover_grid" android:layout_width="0dp" android:layout_height="0dp" android:contentDescription="@string/img_cover" android:scaleType="centerCrop" android:src="@drawable/image_cover_default" app:layout_constraintDimensionRatio="1:1" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="parent" />
 
-        <ImageView
-            android:id="@+id/iv_in_bookshelf_grid"
-            android:layout_width="22dp"
-            android:layout_height="22dp"
-            android:layout_marginEnd="6dp"
-            android:layout_marginTop="6dp"
-            android:background="@drawable/bg_shelf_icon"
-            android:backgroundTint="?android:attr/colorBackground"
-            android:padding="3dp"
-            android:scaleType="centerInside"
-            android:src="@drawable/ic_check"
-            android:tint="?android:attr/textColorPrimary"
-            android:visibility="invisible"
-            app:layout_constraintEnd_toEndOf="@id/iv_cover_grid"
-            app:layout_constraintTop_toTopOf="@id/iv_cover_grid" />
+        <ImageView android:id="@+id/iv_in_bookshelf_grid" android:layout_width="22dp" android:layout_height="22dp" android:layout_marginTop="6dp" android:layout_marginEnd="6dp" android:background="@drawable/bg_shelf_icon" android:backgroundTint="?android:attr/colorBackground" android:padding="3dp" android:scaleType="centerInside" android:src="@drawable/ic_check" android:tint="?android:attr/textColorPrimary" android:visibility="invisible" app:layout_constraintEnd_toEndOf="@id/iv_cover_grid" app:layout_constraintTop_toTopOf="@id/iv_cover_grid" />
 
-        <LinearLayout
-            android:id="@+id/ll_name_container_grid"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_marginTop="8dp"
-            android:layout_marginEnd="8dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/iv_cover_grid">
+        <LinearLayout android:id="@+id/ll_info_grid" android:layout_width="0dp" android:layout_height="wrap_content" android:orientation="vertical" android:paddingStart="12dp" android:paddingTop="10dp" android:paddingEnd="12dp" android:paddingBottom="12dp" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toBottomOf="@id/iv_cover_grid">
 
-            <io.legado.app.ui.widget.image.CircleImageView
-                android:id="@+id/iv_in_bookshelf_dot_grid"
-                android:layout_width="6dp"
-                android:layout_height="6dp"
-                android:layout_marginEnd="4dp"
-                android:scaleType="centerCrop"
-                android:src="@color/md_green_600"
-                android:visibility="gone" />
+            <LinearLayout android:id="@+id/ll_name_container_grid" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/tv_name_grid"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:ellipsize="end"
-                android:maxLines="2"
-                android:textColor="@color/primaryText"
-                android:textSize="13sp"
-                android:textStyle="bold" />
+                <io.legado.app.ui.widget.image.CircleImageView android:id="@+id/iv_in_bookshelf_dot_grid" android:layout_width="6dp" android:layout_height="6dp" android:layout_marginEnd="4dp" android:scaleType="centerCrop" android:src="@color/md_green_600" android:visibility="gone" />
+
+                <TextView android:id="@+id/tv_name_grid" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:ellipsize="end" android:lineSpacingExtra="2dp" android:maxLines="2" android:minLines="2" android:textColor="@color/primaryText" android:textSize="15sp" android:textStyle="bold" />
+            </LinearLayout>
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="5dp" android:gravity="center_vertical" android:minHeight="18dp" android:orientation="horizontal">
+
+                <TextView android:id="@+id/tv_author_grid" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:ellipsize="end" android:maxLines="1" android:textColor="@color/secondaryText" android:textSize="12sp" />
+
+                <TextView android:id="@+id/tv_word_count_grid" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:ellipsize="end" android:maxLines="1" android:textColor="@color/secondaryText" android:textSize="12sp" android:visibility="gone" />
+            </LinearLayout>
+
+            <io.legado.app.ui.widget.ClickThroughHorizontalScrollView android:id="@+id/hsv_kind_grid" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:minHeight="24dp" android:overScrollMode="never" android:scrollbars="none">
+
+                <io.legado.app.ui.widget.LabelsBar android:id="@+id/ll_kind_grid" android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" />
+            </io.legado.app.ui.widget.ClickThroughHorizontalScrollView>
+
+            <TextView android:id="@+id/tv_introduce_grid" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:ellipsize="end" android:maxLines="1" android:minLines="1" android:textColor="@color/secondaryText" android:textSize="12sp" />
         </LinearLayout>
-
-        <TextView
-            android:id="@+id/tv_author_grid"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="3dp"
-            android:layout_marginStart="8dp"
-            android:layout_marginEnd="8dp"
-            android:ellipsize="end"
-            android:lines="1"
-            android:textColor="@color/secondaryText"
-            android:textSize="11sp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/ll_name_container_grid" />
-
-        <io.legado.app.ui.widget.ClickThroughHorizontalScrollView
-            android:id="@+id/hsv_kind_grid"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:layout_marginStart="8dp"
-            android:layout_marginEnd="8dp"
-            android:scrollbars="none"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tv_author_grid">
-
-            <io.legado.app.ui.widget.LabelsBar
-                android:id="@+id/ll_kind_grid"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal" />
-
-        </io.legado.app.ui.widget.ClickThroughHorizontalScrollView>
-
-        <TextView
-            android:id="@+id/tv_word_count_grid"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="3dp"
-            android:layout_marginStart="8dp"
-            android:layout_marginEnd="8dp"
-            android:ellipsize="end"
-            android:lines="1"
-            android:textColor="@color/secondaryText"
-            android:textSize="11sp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/hsv_kind_grid" />
-
-        <TextView
-            android:id="@+id/tv_introduce_grid"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="3dp"
-            android:layout_marginStart="8dp"
-            android:layout_marginEnd="8dp"
-            android:ellipsize="end"
-            android:lines="1"
-            android:textColor="@color/secondaryText"
-            android:textSize="11sp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tv_word_count_grid" />
-
     </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.cardview.widget.CardView>

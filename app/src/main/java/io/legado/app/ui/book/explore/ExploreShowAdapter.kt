@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Bundle
 import android.view.ViewGroup
 import android.widget.ImageView
+import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
 import io.legado.app.R
 import io.legado.app.base.adapter.ItemViewHolder
@@ -126,12 +127,9 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
 
         // 分类标签（不含字数）
         val kindTags = item.kind?.splitNotBlank(",", "\n").orEmpty()
-        if (kindTags.isEmpty()) {
-            binding.hsvKindGrid.gone()
-        } else {
-            binding.hsvKindGrid.visible()
-            binding.llKindGrid.setLabels(kindTags.toList())
-        }
+        binding.llKindGrid.setLabels(kindTags.toList())
+        // 无标签时保留占位，避免同列卡片信息区高矮不一
+        binding.hsvKindGrid.isInvisible = kindTags.isEmpty()
 
         // 字数，放在分类标签下方
         val wordCount = item.wordCount?.takeIf { it.isNotBlank() }
@@ -144,28 +142,13 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
 
         binding.tvIntroduceGrid.text = item.intro?.trim().orEmpty()
 
-        // 简介按列数限制行数，行数同时决定信息区高度，保证各卡片等高
-        val introLines = when {
-            columnCount <= 2 -> 1
-            columnCount == 3 -> 1
-            else -> 1
-        }
-        binding.tvIntroduceGrid.maxLines = introLines
-
-        val density = context.resources.displayMetrics.density
         val spacing = calcColumnSpacing()
         val contentWidth = (context.resources.displayMetrics.widthPixels / columnCount - spacing).coerceAtLeast(1)
         val halfSpacing = spacing / 2
 
-        // 统一卡片高度：封面 1:1 + 固定信息区高度，消除因简介长短、有无标签/字数造成的高矮参差。
-        // 信息区包含：书名、作者、分类标签、字数、简介，新增字数行后高度相应增加。
-        val infoAreaHeight = when {
-            columnCount <= 2 -> 150
-            columnCount == 3 -> 150
-            else -> 150
-        }
+        // 卡片高度由内容自然撑开：书名固定两行、标签行保留占位，同列卡片保持等高，
+        // 同时避免固定高度在信息较少时留下大片空白。
         binding.root.layoutParams = binding.root.layoutParams.apply {
-            height = contentWidth + (infoAreaHeight * density).toInt()
             if (this is ViewGroup.MarginLayoutParams) {
                 setMargins(halfSpacing, halfSpacing, halfSpacing, halfSpacing)
             }
@@ -197,12 +180,10 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
 
         // 分类标签（不含字数）
         val kindTags = item.kind?.splitNotBlank(",", "\n").orEmpty()
-        if (kindTags.isEmpty()) {
-            binding.hsvKindWaterfall.gone()
-        } else {
-            binding.hsvKindWaterfall.visible()
-            binding.llKindWaterfall.setLabels(kindTags.toList())
-        }
+        binding.llKindWaterfall.textSize = 10.5f
+        binding.llKindWaterfall.setLabels(kindTags.toList())
+        // 无标签时保留占位，避免同列卡片信息区高矮不一
+        binding.hsvKindWaterfall.isInvisible = kindTags.isEmpty()
 
         // 字数，放在分类标签下方
         val wordCount = item.wordCount?.takeIf { it.isNotBlank() }
@@ -213,43 +194,16 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
             binding.tvWordCountWaterfall.text = wordCount
         }
 
-        if (item.latestChapterTitle.isNullOrEmpty()) {
-            binding.tvLastedWaterfall.gone()
-        } else {
-            binding.tvLastedWaterfall.text = item.latestChapterTitle
-            binding.tvLastedWaterfall.visible()
-        }
+        // 三列卡片空间有限，只保留核心信息（书名 / 作者 / 分类），章节与简介不展示
+        binding.tvLastedWaterfall.gone()
+        binding.tvIntroduceWaterfall.gone()
 
-        binding.tvIntroduceWaterfall.text = item.intro?.trim().orEmpty()
-
-        // 简介按列数限制行数，行数同时决定信息区高度，保证各卡片等高
-        val introLines = when {
-            columnCount <= 2 -> 1
-            columnCount == 3 -> 1
-            else -> 1
-        }
-        binding.tvIntroduceWaterfall.maxLines = introLines
-
-        val density = context.resources.displayMetrics.density
         val spacing = calcColumnSpacing()
         val contentWidth = (context.resources.displayMetrics.widthPixels / columnCount - spacing).coerceAtLeast(1)
         val halfSpacing = spacing / 2
 
-        // 封面按 1:1 方形展示（XML 已设约束，确保宽高一致）
-        binding.ivCoverWaterfall.layoutParams = binding.ivCoverWaterfall.layoutParams.apply {
-            width = ViewGroup.LayoutParams.MATCH_PARENT
-            height = contentWidth
-        }
-
-        // 统一卡片高度：封面 1:1 + 固定信息区高度，消除因简介长短、有无标签/字数/章节
-        // 造成的高矮参差。内部容器 match_parent + 简介约束到底部，内容不足时自动吸附填满。
-        val infoAreaHeight = when {
-            columnCount <= 2 -> 165
-            columnCount == 3 -> 165
-            else -> 165
-        }
+        // 高度由内容自然撑开：封面 1:1、书名固定两行、标签行保留占位，同列卡片保持等高
         binding.root.layoutParams = binding.root.layoutParams.apply {
-            height = contentWidth + (infoAreaHeight * density).toInt()
             if (this is ViewGroup.MarginLayoutParams) {
                 setMargins(halfSpacing, halfSpacing, halfSpacing, halfSpacing)
             }
